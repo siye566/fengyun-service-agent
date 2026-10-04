@@ -260,7 +260,7 @@ export function ChatPage() {
               alt={
                 appearance?.appName && appearance.appName !== 'Miniclaw'
                   ? appearance.appName
-                  : '峰云空压机售后'
+                  : '空压机售后'
               }
               className="h-8"
             />
@@ -353,7 +353,7 @@ export function ChatPage() {
                 alt={
                   appearance?.appName && appearance.appName !== 'Miniclaw'
                     ? appearance.appName
-                    : '峰云空压机售后'
+                    : '空压机售后'
                 }
                 className="h-12 mb-6"
               />
@@ -378,7 +378,7 @@ export function ChatPage() {
             <div className="w-16 h-16 rounded-2xl overflow-hidden mx-auto mb-6">
               <img
                 src={`${import.meta.env.BASE_URL}icons/fengyun.svg`}
-                alt="峰云空压机售后"
+                alt="空压机售后"
                 className="w-full h-full object-cover"
               />
             </div>
@@ -386,7 +386,7 @@ export function ChatPage() {
               欢迎使用{' '}
               {appearance?.appName && appearance.appName !== 'Miniclaw'
                 ? appearance.appName
-                : '峰云空压机售后'}
+                : '空压机售后'}
             </h2>
             <p className="text-muted-foreground text-sm">
               从左侧选择一个工作区开始对话

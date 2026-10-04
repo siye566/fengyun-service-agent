@@ -127,7 +127,7 @@ export function AppLayout() {
     const appName =
       appearance?.appName && appearance.appName !== 'Miniclaw'
         ? appearance.appName
-        : '峰云空压机售后';
+        : '空压机售后';
     document.title = totalUnread > 0 ? `(${totalUnread}) ${appName}` : appName;
   }, [totalUnread, appearance?.appName]);
 

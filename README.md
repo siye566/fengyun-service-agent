@@ -1,4 +1,4 @@
-# 峰云 · 空压机售后 Agent
+# 空压机售后 Agent
 
 [![Verify service workflow](https://github.com/siye566/fengyun-service-agent/actions/workflows/verify.yml/badge.svg)](https://github.com/siye566/fengyun-service-agent/actions/workflows/verify.yml)
 ![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB)

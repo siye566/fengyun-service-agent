@@ -1,6 +1,6 @@
 {
-  "name": "峰云空压机售后",
-  "short_name": "峰云售后",
+  "name": "空压机售后",
+  "short_name": "售后",
   "description": "企业空压机报修、工单跟进与保养工作台",
   "start_url": "./service",
   "display": "standalone",

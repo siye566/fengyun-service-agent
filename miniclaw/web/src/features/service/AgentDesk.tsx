@@ -379,7 +379,7 @@ export function AgentDesk({
             <Wind size={23} />
           </span>
           <div>
-            <h2>峰云售后 Agent</h2>
+            <h2>售后 Agent</h2>
             <p>
               <span className="fy-demo-dot" />
               本地流程演示 · 未连接模型
@@ -446,7 +446,7 @@ export function AgentDesk({
                 <span className="fy-message-name">
                   {m.role === 'user'
                     ? '客户输入 · 模拟飞书'
-                    : '峰云售后 Agent · 演示'}
+                    : '售后 Agent · 演示'}
                 </span>
                 <div className="fy-message-bubble">{m.text}</div>
                 {m.ticketIds?.map((ticketId) => {

@@ -234,7 +234,7 @@ export function UnifiedSidebar({
           <div className="w-11 h-11 rounded-xl overflow-hidden mb-3 flex-shrink-0">
             <img
               src={`${import.meta.env.BASE_URL}icons/fengyun.svg`}
-              alt="峰云空压机售后"
+              alt="空压机售后"
               className="w-full h-full object-cover"
             />
           </div>
@@ -347,7 +347,7 @@ export function UnifiedSidebar({
                 alt={
                   appearance?.appName && appearance.appName !== 'Miniclaw'
                     ? appearance.appName
-                    : '峰云空压机售后'
+                    : '空压机售后'
                 }
                 className="h-10"
               />

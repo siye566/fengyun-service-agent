@@ -25,7 +25,7 @@ test('overview, scoped data and business navigation render without runtime error
   ).toBe(true);
   await page.getByLabel('筛选演示企业').selectOption('示例企业丙');
   await expect(
-    page.getByRole('heading', { name: '峰云售后 Agent' }),
+    page.getByRole('heading', { name: '售后 Agent' }),
   ).toBeVisible();
   await expect(
     page

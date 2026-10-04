@@ -305,13 +305,12 @@ export function ServicePage() {
         <button
           onClick={() => setSection('agent')}
           className="fy-brand"
-          aria-label="峰云空压机售后首页"
+          aria-label="空压机售后首页"
         >
           <span className="fy-brand-icon">
             <Wind size={25} />
           </span>
           <span>
-            峰云<span className="fy-brand-divider">/</span>
             <b>空压机售后</b>
           </span>
         </button>
@@ -321,7 +320,7 @@ export function ServicePage() {
             真实会话入口 <ArrowRight size={14} />
           </Link>
           <span className="fy-avatar" aria-hidden="true">
-            峰
+            售
           </span>
         </div>
       </header>
