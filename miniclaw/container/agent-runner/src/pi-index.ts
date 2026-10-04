@@ -34,7 +34,7 @@ import { loadWorkspaceMemoryTurnContext } from './workspace-memory-context.js';
 import { buildMiniclawPromptPlan } from './prompt-plan.js';
 import { resolveClaudeProviderRuntime } from './provider-runtime.js';
 import { resolveAgentRuntimeKind } from './runtime-config.js';
-import { createAcsTools } from './acs-tools.js';
+import { createAcsTools, buildAcsSessionContext } from './acs-tools.js';
 import { adaptClaudeMcpToolsToPi } from './runtime/pi/pi-tools.js';
 import { PiRuntimeAdapter } from './runtime/pi/pi-runtime.js';
 import { runPiQueryAttempt } from './runtime/pi/pi-runner.js';
@@ -228,6 +228,7 @@ function applyTurnContext(
   message?: IpcInputMessage,
 ): void {
   if (!message) return;
+  ctx.serviceTurnText = message.text;
   input.currentSourceJid = message.sourceJid || input.currentSourceJid;
   input.channelContext = message.channelContext || input.channelContext;
   input.messageTaskId = message.taskId;
@@ -304,6 +305,7 @@ async function runTurn(
   interrupted: boolean;
   pending: IpcInputMessage[];
 }> {
+  ctx.serviceTurnText = prompt;
   const [memory, owner] = await Promise.all([
     loadWorkspaceMemoryTurnContext(prompt, (query) =>
       fetchWorkspaceMemorySnapshot(ctx, query),
@@ -333,6 +335,7 @@ async function runTurn(
     // 与分诊台系统提示词里引用的工具名一致；scope=会话 chatJid，隔离在 Python 侧强制
     ...adaptClaudeMcpToolsToPi(createAcsTools(ctx)),
   ];
+  const serviceContext = await buildAcsSessionContext(ctx);
   const provider = resolveClaudeProviderRuntime(process.env);
   const runtime = new PiRuntimeAdapter();
   activeInputTurnId =
@@ -349,7 +352,7 @@ async function runTurn(
       ),
       sessionId: input.sessionId,
       model: provider.model || undefined,
-      systemPrompt: buildSystemPrompt(input, ctx),
+      systemPrompt: [buildSystemPrompt(input, ctx), serviceContext].filter(Boolean).join('\n\n'),
       allowedTools: DEFAULT_ALLOWED_TOOLS,
       customTools,
       provider: {

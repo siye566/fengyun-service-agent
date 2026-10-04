@@ -15,8 +15,12 @@ import os
 import sys
 
 from . import tools
+from .service import route_service_turn
+from .context import build_service_context
 
 ROUTES = {
+    "route_service_turn": route_service_turn,
+    "build_service_context": build_service_context,
     "create_repair_ticket": tools.create_repair_ticket,
     "query_maintenance": tools.query_maintenance,
     "query_ticket_status": tools.query_ticket_status,
@@ -29,6 +33,8 @@ ROUTES = {
 
 # 各工具在 ROUTES 函数签名里的参数顺序（不含 scope_key / db_path）
 ARG_NAMES = {
+    "route_service_turn": ("utterance", "session_id", "event_id", "parsed"),
+    "build_service_context": ("session_id",),
     "create_repair_ticket": ("company_name", "device_serial", "symptom", "urgency"),
     "query_maintenance": ("device_serial",),
     "query_ticket_status": ("ticket_no",),

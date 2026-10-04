@@ -26,6 +26,8 @@ import {
 /** Context required by MCP tools. Passed at construction time. */
 export interface McpContext {
   chatJid: string;
+  /** Trusted host input for service confirmation; never supplied by a model tool argument. */
+  serviceTurnText?: string;
   /** Mutable, credential-free context for the current input turn. */
   channelContext?: ChannelTurnContext;
   groupFolder: string;

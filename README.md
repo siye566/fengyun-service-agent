@@ -1,24 +1,100 @@
-# 峰云空压机售后 Agent · 脱敏演示版
+# 峰云 · 空压机售后 Agent
 
-空压机售后服务智能体原型，用于展示领域工具、权限约束和工作台交互。不包含客户数据、生产配置或原仓库提交历史。
+[![Verify service workflow](https://github.com/siye566/fengyun-service-agent/actions/workflows/verify.yml/badge.svg)](https://github.com/siye566/fengyun-service-agent/actions/workflows/verify.yml)
+![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB)
+![Runtime](https://img.shields.io/badge/Runtime-Pi%20%2B%20TypeScript-3178C6)
+[![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
-## 实现与边界
+**把报修、保养与进度查询接入受控的会话流程。** 提供可运行的售后业务引擎、持久化任务状态、企业隔离、上下文预算和离线流程 Benchmark。
 
-- `acs-agent/`：Python + SQLite 业务引擎，提供报修、保养查询与扫描、零件申领/审批、进度查询等工具。会话绑定决定企业或内部角色，未绑定时拒绝访问。
-- `miniclaw/container/agent-runner/src/acs-tools.ts`：Pi Runtime 到 Python CLI 的工具桥，将会话身份传入业务层。
-- `miniclaw/web/`：峰云售后工作台。`/service-preview` 使用组件内存中的演示数据，刷新后重置；确认、任务与执行记录不能视为真实后台动作。详见 [前端说明](miniclaw/web/SERVICE-FRONTEND.md)。
-- 不声明生产上线、真实客户收益或模型评测成绩。企业隔离在 Python 工具层实现，前端企业筛选仅作展示。
+这是脱敏业务原型。后端工具可以真实读写示例 SQLite；新售后界面使用内存演示数据。两者的接入方式与验证范围分别说明。
 
-## 本地运行
+[快速体验](#快速体验) · [能力与源码](docs/implementation-map.md) · [Pi 接入](docs/run-service-mode.md) · [验证记录](docs/validation.md)
 
-需要 Node.js 20+、npm、Python 3.10+。在 `acs-agent` 下创建虚拟环境，执行 `pip install -r requirements.txt` 和 `python -m pytest -q`，再执行 `python -m acs.seed` 生成示例数据库。
+## 一条报修链路
 
-在 `miniclaw`、`miniclaw/web` 和 `miniclaw/container/agent-runner` 下分别运行 `npm ci`。仅预览前端时，在 `miniclaw/web` 下运行 `npm run dev`，打开 `http://localhost:5173/service-preview`。
+```text
+“报修 DEMO-GR75-0001 异响” → 校验身份与设备 → 等待用户确认
+“查工单进度”              → 独立只读查询 → 原报修继续等待
+“确认报修”                → 校验可信原文 → 创建工单并保存回执
+重复收到同一确认消息       → 返回原结果   → 不重复建单
+```
 
-接入工具前，设置 `ACS_AGENT_PYTHON` 为虚拟环境 Python 的绝对路径、`ACS_AGENT_ROOT` 为 `acs-agent` 的绝对路径，再按 [运行说明](miniclaw/README.md) 构建和启动。模型与渠道凭证仅通过本地配置提供。
+程序决定作用域、确认条件和写操作；模型提供意图及实体候选。待确认状态保存到数据库，设备不明确、字段缺失、跨企业访问或上下文超限时有明确失败路径。
 
-## 脱敏与许可
+## 能力地图
 
-企业统一为“示例企业甲/乙/丙”，设备编号使用 `DEMO-` 前缀。个人路径、凭证、数据库、日志、历史评测报告、截图和本地工具元数据不随仓库发布。规则和价格仅作软件演示。
+| 模块 | 当前实现 | 源码入口 |
+| --- | --- | --- |
+| 意图与状态路由 | 结构化候选校验、缺字段澄清、确认建单、查询不覆盖待处理报修 | [service.py](acs-agent/acs/service.py) |
+| 企业隔离 | 可信会话绑定、默认拒绝、设备/工单归属校验、绑定变更隔离旧任务 | [identity.py](acs-agent/acs/identity.py) |
+| 上下文与预算 | 6 段按阶段装配，来源/摘要/哈希审计，字节预算、告警与阻断 | [context.py](acs-agent/acs/context.py) |
+| 业务工具 | 报修、保养、进度、保养扫描、零件申领和内部审批 | [tools.py](acs-agent/acs/tools.py) |
+| Runtime 接入 | Node→Python CLI，可信原文和事件 ID 注入，当前 Pi 入口的上下文检查 | [acs-tools.ts](miniclaw/container/agent-runner/src/acs-tools.ts) |
+| 流程 Benchmark | 16 个场景，标注意图、澄清、允许工具、目标状态及工单数 | [service_cases.json](acs-agent/evals/service_cases.json) |
+| 售后工作台 | 对话、设备确认、任务与工单演示 | [前端说明](miniclaw/web/SERVICE-FRONTEND.md) |
 
-售后领域扩展位于业务引擎、工具桥与售后前端中；通用运行时、工作区与渠道基础设施属于底座能力。第三方代码的版权及许可声明见 [LICENSE](LICENSE)。
+```mermaid
+flowchart LR
+    U[用户消息] --> H[Host 可信身份与消息 ID]
+    H --> P[Pi 结构化候选]
+    C[分段上下文与预算] --> P
+    P --> G[状态与业务校验]
+    G --> Q[澄清 / 等待确认]
+    G --> T[领域工具]
+    T --> D[(SQLite 工单与状态)]
+    D --> C
+    D --> R[结果与执行回执]
+```
+
+## 快速体验
+
+### 后端：无需模型密钥
+
+需要 Python 3.10+。下面的 demo 和 Benchmark 都创建临时数据库，退出后自动清理。
+
+```bash
+git clone https://github.com/siye566/fengyun-service-agent.git
+cd fengyun-service-agent/acs-agent
+python -m venv .venv
+# Windows: .venv\Scripts\activate
+# macOS/Linux: source .venv/bin/activate
+python -m pip install pytest
+python scripts/demo_service.py
+python -m pytest -q
+python evals/run_service_eval.py --output evals/reports/service.json
+```
+
+接入模型/MCP 时再安装 `requirements.txt`。真实 Pi 链路须启用 `ACS_SERVICE_MODE=1` 并绑定实际会话身份，完整步骤见 [运行指南](docs/run-service-mode.md)。
+
+### 前端：售后交互预览
+
+需要 Node.js 20+。先在 `miniclaw` 下执行 `npm ci`，再运行：
+
+```bash
+cd miniclaw/web
+npm ci
+npm run dev
+```
+
+打开 `http://localhost:5173/service-preview`。前端确认、任务和执行记录使用内存数据，刷新后重置；这些按钮还没有接入上述业务引擎。真实会话工具通过现有 `/chat` 与 Host/Pi 运行。
+
+## 验证与边界
+
+本地验证：**50 项 Python 测试、16/16 离线业务场景、真实 Node→Python 集成测试、当前 Pi Runner 构建通过**。CI 在 push 和 PR 时复验并提供报告；详细命令与范围见 [验证记录](docs/validation.md)。
+
+- Benchmark 检查业务契约；不是模型意图准确率或飞书收发通过率。
+- 上下文预算按 UTF-8 bytes 计算；不是整个模型窗口的精确 token 预算。
+- 分类分数融合与温度校准保留为 [设计方案](docs/intent-calibration-design.md)，没有校准成绩。
+- 当前权限为企业客户与合并内部角色；不声称已经完成细分财务 RBAC、自动派单、生产上线或业务收益。
+
+## 仓库结构
+
+```text
+acs-agent/   业务引擎 · 状态路由 · 隔离 · pytest · Benchmark
+miniclaw/    通用运行时与工作台 · Pi 工具桥 · 售后前端
+docs/        实现对照 · 接入指南 · 校准设计 · 验证记录
+.github/     持续验证工作流
+```
+
+企业名与设备编号均为示例标识。凭证、运行数据库、会话、日志和原始客户材料不随仓库发布。第三方代码的版权及许可声明见 [LICENSE](LICENSE)。

@@ -1,0 +1,42 @@
+{
+  "version": "service-benchmark-v1",
+  "description": "Offline workflow contracts; model extraction quality is evaluated separately.",
+  "cases": [
+    {"id":"repair-confirm","turns":[
+      {"text":"报修 DEMO-GR75-0001 机器异响","intents":["repair"],"stage":"awaiting_confirmation","allowed_tools":[],"clarify":true},
+      {"text":"确认报修","intents":["repair"],"stage":"completed","allowed_tools":["create_repair_ticket"],"clarify":false}
+    ],"tickets":1},
+    {"id":"missing-device","turns":[
+      {"text":"报修机器异响","intents":["repair"],"stage":"awaiting_details","allowed_tools":[],"clarify":true},
+      {"text":"DEMO-GR75-0001","intents":["repair"],"stage":"awaiting_confirmation","allowed_tools":[],"clarify":true}
+    ],"tickets":0},
+    {"id":"missing-symptom","turns":[
+      {"text":"报修 DEMO-GR75-0001","intents":["repair"],"stage":"awaiting_details","allowed_tools":[],"clarify":true},
+      {"text":"不出气","intents":["repair"],"stage":"awaiting_confirmation","allowed_tools":[],"clarify":true}
+    ],"tickets":0},
+    {"id":"confirmation-too-early","turns":[{"text":"确认报修","error":"confirmation_not_ready","allowed_tools":[]}],"tickets":0},
+    {"id":"unknown-device","turns":[{"text":"报修 DEMO-GR75-9999 异响","intents":["repair"],"stage":"awaiting_details","allowed_tools":[],"clarify":true}],"tickets":0},
+    {"id":"cross-company","turns":[{"text":"报修 DEMO-GR75-0002 异响","error":"cross_company_denied","allowed_tools":[]}],"tickets":0},
+    {"id":"unbound","scope":"web:unbound","turns":[{"text":"报修 DEMO-GR75-0001 异响","error":"caller_unbound","allowed_tools":[]}],"tickets":0},
+    {"id":"maintenance","turns":[{"text":"查询 DEMO-GR75-0001 保养","intents":["maintenance"],"stage":"idle","allowed_tools":["query_maintenance"],"clarify":false}],"tickets":0},
+    {"id":"maintenance-missing-device","turns":[{"text":"查保养","intents":["maintenance"],"stage":"idle","allowed_tools":[],"clarify":true}],"tickets":0},
+    {"id":"progress","turns":[{"text":"查工单进度","intents":["progress"],"stage":"idle","allowed_tools":["list_company_tickets"],"clarify":false}],"tickets":0},
+    {"id":"compound-detour","turns":[
+      {"text":"报修 DEMO-GR75-0001 异响，顺便查工单进度","intents":["repair","progress"],"stage":"awaiting_confirmation","allowed_tools":["list_company_tickets"],"clarify":true},
+      {"text":"查工单进度","intents":["progress"],"stage":"awaiting_confirmation","allowed_tools":["list_company_tickets"],"clarify":false},
+      {"text":"确认报修","intents":["repair"],"stage":"completed","allowed_tools":["create_repair_ticket"],"clarify":false}
+    ],"tickets":1},
+    {"id":"cancel","turns":[
+      {"text":"报修 DEMO-GR75-0001 异响","intents":["repair"],"stage":"awaiting_confirmation","allowed_tools":[],"clarify":true},
+      {"text":"取消报修","intents":[],"stage":"cancelled","allowed_tools":[],"clarify":false}
+    ],"tickets":0},
+    {"id":"negation","turns":[{"text":"不要报修 DEMO-GR75-0001 异响","intents":[],"stage":"idle","allowed_tools":[],"clarify":true}],"tickets":0},
+    {"id":"duplicate-confirm","turns":[
+      {"text":"报修 DEMO-GR75-0001 异响","intents":["repair"],"stage":"awaiting_confirmation","allowed_tools":[],"clarify":true},
+      {"text":"确认报修","event_id":"same-message","intents":["repair"],"stage":"completed","allowed_tools":["create_repair_ticket"],"clarify":false},
+      {"text":"确认报修","event_id":"same-message","intents":["repair"],"stage":"completed","allowed_tools":["create_repair_ticket"],"clarify":false}
+    ],"tickets":1},
+    {"id":"model-extraction-contract","turns":[{"text":"请受理这台设备的皮带故障","parsed":{"intents":["repair"],"device_serial":"DEMO-GR75-0001","symptom":"皮带故障"},"intents":["repair"],"stage":"awaiting_confirmation","allowed_tools":[],"clarify":true}],"tickets":0},
+    {"id":"invalid-model-schema","turns":[{"text":"报修","parsed":{"intents":["approve"]},"error":"invalid_candidates","allowed_tools":[]}],"tickets":0}
+  ]
+}

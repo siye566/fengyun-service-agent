@@ -57,6 +57,7 @@ def create_repair_ticket(
     ticket_type: str = "repair",
     scope_key: str | None = None,
     db_path: str | None = None,
+    idempotency_key: str | None = None,
 ) -> dict:
     """报修：身份闸门 → 信息补全校验 → 台账校验 → 知识库检索 → 工单落库。
 
@@ -65,6 +66,7 @@ def create_repair_ticket(
     """
     conn = connect(db_path)
     try:
+        conn.execute("BEGIN IMMEDIATE")
         caller = resolve_caller(conn, scope_key)
         if caller["role"] == ROLE_UNBOUND:
             return unbound_error(caller["scope_key"])
@@ -115,6 +117,15 @@ def create_repair_ticket(
         ):
             return cross_company_error("设备", device["serial_no"])
 
+        if idempotency_key:
+            existing = conn.execute(
+                "SELECT ticket_no FROM tickets WHERE idempotency_key = ? AND company_name = ?",
+                (idempotency_key, company_name.strip()),
+            ).fetchone()
+            if existing:
+                conn.commit()
+                return query_ticket_status(existing["ticket_no"], scope_key, db_path)
+
         # 知识库检索：按型号圈定范围，现象做包含匹配（"报 E3 故障"能命中"显示E3"）
         kb = conn.execute(
             "SELECT * FROM fault_kb WHERE model = ? AND symptom LIKE ? LIMIT 1",
@@ -131,7 +142,7 @@ def create_repair_ticket(
         else:
             # 知识库未收录 → 不编造诊断，直接派单（任务书 4.2）
             advice = (
-                "知识库未收录该故障现象，已直接为您派工程师上门，"
+                "知识库未收录该故障现象，已受理并等待安排工程师，"
                 "不提供猜测性诊断；现场确诊以工程师为准。"
             )
             kb_id = None
@@ -144,8 +155,8 @@ def create_repair_ticket(
         ticket_no = f"ACS-{today.replace('-', '')}-{seq + 1:03d}"
         conn.execute(
             "INSERT INTO tickets (ticket_no, company_name, device_serial, model,"
-            " symptom, urgency, status, kb_id, advice, created_at, ticket_type)"
-            " VALUES (?, ?, ?, ?, ?, ?, 'pending_dispatch', ?, ?, ?, ?)",
+            " symptom, urgency, status, kb_id, advice, created_at, ticket_type, idempotency_key)"
+            " VALUES (?, ?, ?, ?, ?, ?, 'pending_dispatch', ?, ?, ?, ?, ?)",
             (
                 ticket_no,
                 company_name.strip(),
@@ -157,6 +168,7 @@ def create_repair_ticket(
                 advice,
                 datetime.now().isoformat(timespec="seconds"),
                 ticket_type,
+                idempotency_key,
             ),
         )
         conn.commit()
@@ -220,7 +232,7 @@ def query_maintenance(
             hint = f"预计 {days_left} 天后到保养周期，请预约上门时间"
         else:
             status = "normal"
-            hint = "设备保养状态正常，到期前会自动提醒"
+            hint = "设备保养状态正常，可由内部保养扫描检查临期情况"
 
         return ok(
             {

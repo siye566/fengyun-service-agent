@@ -62,7 +62,7 @@ def seed(db_path: str | None = None, reset: bool = False) -> dict:
             return {"seeded": False, "reason": f"台账已有 {existing} 台设备，跳过（要重写请加 --reset）"}
 
         if reset:
-            for table in ("part_requests", "tickets", "maintenance_plans",
+            for table in ("service_turns", "service_sessions", "part_requests", "tickets", "maintenance_plans",
                           "fault_kb", "parts", "devices", "company_bindings"):
                 conn.execute(f"DELETE FROM {table}")
 

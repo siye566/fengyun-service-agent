@@ -5,6 +5,7 @@
 tickets（报修工单）是工具的产物表，第 2 轮编排会扩展它的状态机。
 """
 import sqlite3
+import os
 from pathlib import Path
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
@@ -89,11 +90,29 @@ def _migrate(conn: sqlite3.Connection) -> None:
         )
     except sqlite3.OperationalError:
         pass  # 列已存在
+    try:
+        conn.execute("ALTER TABLE tickets ADD COLUMN idempotency_key TEXT")
+    except sqlite3.OperationalError:
+        pass
+    conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS ticket_idempotency ON tickets(idempotency_key)")
+    conn.executescript("""
+    CREATE TABLE IF NOT EXISTS service_sessions (
+        session_key TEXT PRIMARY KEY,
+        state_json TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS service_turns (
+        session_key TEXT NOT NULL,
+        event_id TEXT NOT NULL,
+        result_json TEXT NOT NULL,
+        PRIMARY KEY (session_key, event_id)
+    );
+    """)
 
 
 def connect(db_path: Path | str | None = None) -> sqlite3.Connection:
     """打开连接并确保表存在。db_path 参数供测试用临时库，默认用 data/acs.sqlite3。"""
-    path = Path(db_path) if db_path else DB_PATH
+    path = Path(db_path or os.environ.get("ACS_DB_PATH") or DB_PATH)
     path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(path)
     conn.row_factory = sqlite3.Row
