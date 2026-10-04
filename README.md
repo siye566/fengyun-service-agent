@@ -11,6 +11,45 @@
 
 [快速体验](#快速体验) · [能力与源码](docs/implementation-map.md) · [Pi 接入](docs/run-service-mode.md) · [验证记录](docs/validation.md)
 
+## 运行截图
+
+以下截图来自实际本地运行，企业及设备均使用脱敏示例。前端画面保留“演示”标识，后端运行记录单独展示。
+
+**售后工作台 · 前端演示**
+
+![售后工作台：企业选择、会话入口、任务与执行记录](docs/screenshots/workbench.png)
+
+<details>
+<summary>报修确认：补充设备与故障，核对后再提交</summary>
+
+前端演示将报修与进度查询分开保留。此图为等待确认状态，按钮生成的是组件内存中的演示工单。
+
+![报修确认：设备、故障与待提交任务](docs/screenshots/repair-confirmation.png)
+
+</details>
+
+<details>
+<summary>设备台账与保养计划</summary>
+
+设备用 DEMO 编号区分；保养页展示临期、逾期和正常状态，以及型号对应项目。页面内的自动提醒标注为规划中。
+
+![设备台账：三个脱敏示例设备](docs/screenshots/device-maintenance.png)
+
+![保养计划：临期、逾期和正常状态](docs/screenshots/maintenance-plan.png)
+
+</details>
+
+<details>
+<summary>后端实际运行：等待确认 → 独立查询 → 确认建单</summary>
+
+以下是 `python scripts/demo_service.py` 的真实 stdout 整理视图，运行时读写临时 SQLite。它是运行记录展示，不是后台产品界面；未调用模型或发送飞书消息。
+
+![后端实际运行记录：确认前不建单，独立查询保留报修，确认后创建工单](docs/screenshots/backend-workflow.png)
+
+</details>
+
+截图复现方式见 [截图说明](docs/screenshots/README.md)。
+
 ## 一条报修链路
 
 ```text

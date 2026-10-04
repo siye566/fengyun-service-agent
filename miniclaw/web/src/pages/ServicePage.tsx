@@ -328,7 +328,7 @@ export function ServicePage() {
       <div className="fy-content">
         <div className="fy-page-heading">
           <div>
-            <p className="fy-eyebrow">FENGYUN SERVICE AGENT</p>
+          <p className="fy-eyebrow">SERVICE AGENT</p>
             <h1>与 Agent 一起处理售后需求</h1>
             <p className="fy-subtitle">
               客户在飞书提需求，售后在这里跟进任务、确认信息与接手处理。
