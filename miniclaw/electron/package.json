@@ -4,7 +4,11 @@
   "private": true,
   "description": "Electron Desktop Shell for Miniclaw",
   "main": "dist/main.cjs",
-  "author": "helson",
   "license": "MIT",
-  "homepage": "https://github.com/helsome/miniclaw#readme"
+  "homepage": "https://github.com/siye566/fengyun-service-agent#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/siye566/fengyun-service-agent.git",
+    "directory": "miniclaw/electron"
+  }
 }

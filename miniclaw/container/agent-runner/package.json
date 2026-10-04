@@ -27,14 +27,13 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/helsome/miniclaw.git",
-    "directory": "container/agent-runner"
+    "url": "git+https://github.com/siye566/fengyun-service-agent.git",
+    "directory": "miniclaw/container/agent-runner"
   },
-  "homepage": "https://github.com/helsome/miniclaw#readme",
+  "homepage": "https://github.com/siye566/fengyun-service-agent#readme",
   "bugs": {
-    "url": "https://github.com/helsome/miniclaw/issues"
+    "url": "https://github.com/siye566/fengyun-service-agent/issues"
   },
-  "author": "helson",
   "keywords": [
     "agent-runner",
     "mcp",

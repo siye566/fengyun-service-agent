@@ -56,12 +56,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/helsome/miniclaw.git",
-    "directory": "web"
+    "url": "git+https://github.com/siye566/fengyun-service-agent.git",
+    "directory": "miniclaw/web"
   },
-  "homepage": "https://github.com/helsome/miniclaw#readme",
+  "homepage": "https://github.com/siye566/fengyun-service-agent#readme",
   "bugs": {
-    "url": "https://github.com/helsome/miniclaw/issues"
-  },
-  "author": "helson"
+    "url": "https://github.com/siye566/fengyun-service-agent/issues"
+  }
 }

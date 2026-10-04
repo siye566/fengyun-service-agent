@@ -1,6 +1,6 @@
 # 峰云空压机售后 Agent · 脱敏演示版
 
-基于 [MiniClaw](https://github.com/helsome/miniclaw) / Pi Runtime 扩展的空压机售后原型，用于展示领域工具、权限约束和工作台交互。不包含客户数据、生产配置或原仓库提交历史。
+空压机售后服务智能体原型，用于展示领域工具、权限约束和工作台交互。不包含客户数据、生产配置或原仓库提交历史。
 
 ## 实现与边界
 
@@ -15,10 +15,10 @@
 
 在 `miniclaw`、`miniclaw/web` 和 `miniclaw/container/agent-runner` 下分别运行 `npm ci`。仅预览前端时，在 `miniclaw/web` 下运行 `npm run dev`，打开 `http://localhost:5173/service-preview`。
 
-接入工具前，设置 `ACS_AGENT_PYTHON` 为虚拟环境 Python 的绝对路径、`ACS_AGENT_ROOT` 为 `acs-agent` 的绝对路径，再按 [MiniClaw 运行说明](miniclaw/README.md) 构建和启动。模型与渠道凭证仅通过本地配置提供。
+接入工具前，设置 `ACS_AGENT_PYTHON` 为虚拟环境 Python 的绝对路径、`ACS_AGENT_ROOT` 为 `acs-agent` 的绝对路径，再按 [运行说明](miniclaw/README.md) 构建和启动。模型与渠道凭证仅通过本地配置提供。
 
-## 脱敏与来源
+## 脱敏与许可
 
 企业统一为“示例企业甲/乙/丙”，设备编号使用 `DEMO-` 前缀。个人路径、凭证、数据库、日志、历史评测报告、截图和本地工具元数据不随仓库发布。规则和价格仅作软件演示。
 
-保留 MiniClaw 上游作者、仓库地址及 MIT 版权声明。售后扩展与上游底座分别存放，避免把底座能力归为本项目独立实现。详见 [LICENSE](LICENSE)。
+售后领域扩展位于业务引擎、工具桥与售后前端中；通用运行时、工作区与渠道基础设施属于底座能力。第三方代码的版权及许可声明见 [LICENSE](LICENSE)。
