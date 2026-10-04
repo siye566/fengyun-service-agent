@@ -1,0 +1,31 @@
+{
+  "name": "峰云空压机售后",
+  "short_name": "峰云售后",
+  "description": "企业空压机报修、工单跟进与保养工作台",
+  "start_url": "./service",
+  "display": "standalone",
+  "display_override": ["standalone"],
+  "background_color": "#FAF9F5",
+  "theme_color": "#0d9488",
+  "lang": "zh-CN",
+  "scope": "./",
+  "id": "./",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
