@@ -1,11 +1,13 @@
 # 截图来源与复现
 
-截图日期：2026-10-04。浏览器：Chromium，桌面视口。前端来源为本仓库 `/service-preview`，数据为示例企业、DEMO 设备与内存工单；不是客户生产画面。
+截图复验日期：2026-10-08。全部图片从迁移后的独立工作台与实际 Python 演示重新生成，浏览器页面错误为 0。企业、设备及工单均为合成演示数据，不是客户生产画面。
 
-`backend-workflow.png` 从真实 `python scripts/demo_service.py` stdout 生成可读 HTML 后截图，未修改运行结果。它不代表存在额外的后台产品页面，也不证明模型、飞书或生产环境验收。
+`backend-workflow.png` 来自真实 Python demo 的 stdout，整理为 HTML 后截图，没有修改运行结果；它不是额外的后台产品页面，也不证明模型、飞书或生产验收。
 
-在 `miniclaw/web` 下安装依赖并运行 `npm run dev -- --host 127.0.0.1 --port 5187 --strictPort`；另开终端执行 `node scripts/capture-service.mjs`。
+仓库根目录安装依赖，启动 `npm run dev -- --port 5187 --strictPort`，另开终端执行：
 
-脚本默认使用 Playwright Chromium 和 PATH 中的 Python。可通过 `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` 指定本地 Chrome/Chromium，`ACS_CAPTURE_PYTHON` 指定解释器，`SERVICE_PREVIEW_URL` 指定本地预览地址。无需模型或渠道凭证。
+```bash
+npm run screenshots --workspace @service-agent/console
+```
 
-前端预览没有后端 WebSocket 服务，可能记录 `WebSocket closed without opened.` 警告；脚本只单独记录此已知预览警告，其他页面错误会使捕获失败。截图中保留原有演示与规划状态说明。
+脚本默认使用 Playwright Chromium 和 PATH 中 Python。可通过 `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`、`ACS_CAPTURE_PYTHON`、`SERVICE_PREVIEW_URL` 指定浏览器、解释器和预览地址。不需要模型或渠道凭证。运行记录来自 `examples/demo_service.py`；输出写入本目录。截图保留演示与规划状态说明。

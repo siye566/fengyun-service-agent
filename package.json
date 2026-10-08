@@ -1,0 +1,18 @@
+{
+  "name": "compressor-service-agent",
+  "version": "0.1.0",
+  "private": true,
+  "description": "空压机售后业务引擎、独立工作台与离线流程评估",
+  "workspaces": ["apps/service-console"],
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "dev": "npm run dev --workspace @service-agent/console --",
+    "build": "npm run build --workspace @service-agent/console",
+    "demo": "node scripts/run-backend.mjs demo",
+    "test": "node scripts/run-backend.mjs test",
+    "eval": "node scripts/run-backend.mjs eval",
+    "test:ui": "npm run test:e2e --workspace @service-agent/console",
+    "test:bridge": "npm --prefix vendor/miniclaw test -- --run tests/acs-service-bridge.test.ts",
+    "build:runner": "npm --prefix vendor/miniclaw/container/agent-runner run build"
+  }
+}
