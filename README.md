@@ -11,6 +11,10 @@
 
 [快速体验](#快速体验) · [架构与目录](docs/architecture.md) · [能力与源码](docs/implementation-map.md) · [Pi 接入](docs/run-service-mode.md) · [验证记录](docs/validation.md)
 
+[English quickstart](docs/quickstart.en.md) · [Optional BoxLite sandbox cookbook](docs/boxlite-cookbook.en.md)
+
+新增 BoxLite 本地 SDK 报告执行示例为可选工程实验：仅运行固定的合成报告程序，不向 VM 挂载工单库或注入业务凭据，不替代工单权限与人工确认。默认测试使用替身验证调用契约；真实 microVM 运行与性能需在支持的宿主机上另行验证。
+
 ## 仓库结构
 
 ```text
@@ -158,3 +162,4 @@ Python 命令自动优先使用根目录 `.venv`，也可设置 `ACS_AGENT_PYTHO
 - Benchmark 检查业务契约；不是模型意图准确率或飞书收发通过率。
 - 上下文预算按 UTF-8 bytes 计算；不是整个模型窗口的精确 token 预算。
 - 当前权限为企业客户与合并内部角色；不声称已经完成细分财务 RBAC、自动派单、生产上线或业务收益。
+
