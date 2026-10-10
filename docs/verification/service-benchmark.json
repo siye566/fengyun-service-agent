@@ -1,0 +1,88 @@
+{
+  "version": "service-benchmark-v1",
+  "scope": "offline business workflow; not model accuracy or channel delivery",
+  "passed": 16,
+  "total": 16,
+  "results": [
+    {
+      "id": "repair-confirm",
+      "passed": true,
+      "failures": []
+    },
+    {
+      "id": "missing-device",
+      "passed": true,
+      "failures": []
+    },
+    {
+      "id": "missing-symptom",
+      "passed": true,
+      "failures": []
+    },
+    {
+      "id": "confirmation-too-early",
+      "passed": true,
+      "failures": []
+    },
+    {
+      "id": "unknown-device",
+      "passed": true,
+      "failures": []
+    },
+    {
+      "id": "cross-company",
+      "passed": true,
+      "failures": []
+    },
+    {
+      "id": "unbound",
+      "passed": true,
+      "failures": []
+    },
+    {
+      "id": "maintenance",
+      "passed": true,
+      "failures": []
+    },
+    {
+      "id": "maintenance-missing-device",
+      "passed": true,
+      "failures": []
+    },
+    {
+      "id": "progress",
+      "passed": true,
+      "failures": []
+    },
+    {
+      "id": "compound-detour",
+      "passed": true,
+      "failures": []
+    },
+    {
+      "id": "cancel",
+      "passed": true,
+      "failures": []
+    },
+    {
+      "id": "negation",
+      "passed": true,
+      "failures": []
+    },
+    {
+      "id": "duplicate-confirm",
+      "passed": true,
+      "failures": []
+    },
+    {
+      "id": "model-extraction-contract",
+      "passed": true,
+      "failures": []
+    },
+    {
+      "id": "invalid-model-schema",
+      "passed": true,
+      "failures": []
+    }
+  ]
+}

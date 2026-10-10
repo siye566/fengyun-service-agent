@@ -2,6 +2,8 @@
 
 本项目将产品界面、领域引擎、评估样例与可选运行时分开。工作台独立构建，业务引擎独立测试；只有模型/渠道接入依赖通用运行时。
 
+[关键工程设计](engineering-decisions.md) · [验证结果](verification/README.md) · [交付范围](roadmap.md)
+
 ```mermaid
 flowchart TB
     subgraph Product[售后业务模块]

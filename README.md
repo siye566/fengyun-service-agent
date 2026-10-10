@@ -1,116 +1,104 @@
-# 空压机售后 Agent
+<p align="center">
+  <img src="docs/assets/project-cover.svg" width="100%" alt="空压机售后智能服务系统：受控报修、企业隔离、状态持久化与上下文预算" />
+</p>
 
-[![Verify service workflow](https://github.com/siye566/fengyun-service-agent/actions/workflows/verify.yml/badge.svg)](https://github.com/siye566/fengyun-service-agent/actions/workflows/verify.yml)
+# 空压机售后智能服务系统
+
+[![持续验证](https://github.com/siye566/fengyun-service-agent/actions/workflows/verify.yml/badge.svg)](https://github.com/siye566/fengyun-service-agent/actions/workflows/verify.yml)
 ![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB)
-![Runtime](https://img.shields.io/badge/Runtime-Pi%20%2B%20TypeScript-3178C6)
-[![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
+![React](https://img.shields.io/badge/React-TypeScript-3178C6)
+![SQLite](https://img.shields.io/badge/Storage-SQLite-0F7C78)
+[![MIT](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
-**把报修、保养与进度查询接入受控的会话流程。** 提供可运行的售后业务引擎、持久化任务状态、企业隔离、上下文预算和离线流程 Benchmark。
+**面向设备售后业务的 Agent 工程项目：把报修、保养和进度查询组织为有状态、有权限边界、有确认门禁的业务流程。** 模型提供结构化候选，程序决定作用域、任务阶段与实际写操作，SQLite 保存待处理任务、工单和事件回执。
 
-这是脱敏业务原型。后端工具可以真实读写示例 SQLite；新售后界面使用内存演示数据。两者的接入方式与验证范围分别说明。
+[快速体验](#快速体验) · [业务流程](#业务流程) · [工程设计](docs/engineering-decisions.md) · [系统架构](docs/architecture.md) · [验证结果](docs/verification/README.md) · [交付范围](docs/roadmap.md)
 
-[快速体验](#快速体验) · [架构与目录](docs/architecture.md) · [能力与源码](docs/implementation-map.md) · [Pi 接入](docs/run-service-mode.md) · [验证记录](docs/validation.md)
+## 项目概览
 
-## 仓库结构
+| 业务模块 | 工程实现 | 对应入口 |
+| --- | --- | --- |
+| 报修受理 | 缺字段澄清、设备校验、用户确认后建单 | [状态路由](backend/acs/service.py) |
+| 企业与设备作用域 | 可信会话绑定、未绑定拒绝、设备/工单归属校验 | [身份与权限](backend/acs/identity.py) |
+| 任务与回执 | 持久化待确认状态、稳定事件 ID、建单幂等键 | [SQLite 数据结构](backend/acs/db.py) |
+| 保养与进度 | 按设备查询保养、按企业/工单查询进度，独立查询保留报修 | [领域工具](backend/acs/tools.py) |
+| 上下文装配 | 六段上下文、来源/摘要/哈希审计、预算告警与阻断 | [上下文服务](backend/acs/context.py) |
+| 售后工作台 | 会话、任务卡片、工单、台账和保养计划 | [独立 React 应用](apps/service-console/README.md) |
 
-```text
-apps/service-console/  独立售后工作台 · Agent 对话 · 设备/工单/保养
-backend/acs/           业务引擎 · 确认门禁 · 企业隔离 · 上下文预算
-backend/tests/         真实业务规则与失败路径回归
-examples/              三轮报修链路 · 临时 SQLite 演示
-evals/                 16 场景 Benchmark · 意图实验样例
-scripts/               跨平台统一运行入口
-docs/                  架构图 · 源码导航 · 运行截图 · 验证记录
-vendor/                可选通用运行时及许可声明
-.github/               业务与前端持续验证
-package.json           根目录启动、构建、测试、demo 和评估命令
-pyproject.toml         Python 测试路径配置
+公开版本使用示例企业、DEMO 设备与合成工单。领域引擎可真实读写 SQLite；工作台当前为合成数据模式，尚未连接领域 API。真实会话链路通过 [Host/Pi 工具桥](docs/run-service-mode.md) 接入。
+
+## 业务流程
+
+一条报修可以跨消息等待用户补充和确认；等待期间的工单查询不会覆盖原任务。
+
+| 用户输入 | 程序处理 | 状态 / 写操作 |
+| --- | --- | --- |
+| “报修，机器异响” | 发现设备缺失，要求补充序列号 | 等待补充，不建单 |
+| “DEMO-GR75-0001” | 校验企业、设备和故障信息 | 等待确认，不建单 |
+| “查工单进度” | 独立只读查询，保留原报修 | 原任务继续等待 |
+| “确认报修” | 验证可信本轮原文，调用建单工具 | 保存工单及回执 |
+| 重复收到同一确认事件 | 返回已保存的事件结果 | 不重复建单 |
+
+```mermaid
+flowchart LR
+    U[售后需求] --> I[可信会话与企业身份]
+    I --> S[读取持久化任务]
+    S --> C[结构化候选与业务校验]
+    C --> Q[澄清 / 等待确认]
+    Q --> S
+    C --> T[领域工具]
+    T --> D[(SQLite 任务 / 工单 / 回执)]
+    D --> S
+    D --> R[结果反馈]
 ```
 
-从 [架构与源码阅读顺序](docs/architecture.md) 开始即可找到业务代码；历史路径变化见 [目录迁移](docs/directory-migration.md)。
+查看 [关键工程设计](docs/engineering-decisions.md)，了解确认门禁、身份绑定、查询保留任务和中断恢复的取舍；完整能力对照见 [实现地图](docs/implementation-map.md)。
 
-企业名与设备编号均为示例标识。凭证、运行数据库、会话、日志和原始客户材料不随仓库发布。代码来源与改动范围见 [NOTICE](NOTICE.md)，第三方代码的版权及许可声明保留于 [LICENSE](LICENSE)。
+## 售后工作台
 
-## 运行截图
+**报修确认与待处理任务**：将对话中的设备、故障及待提交动作放在同一工作区，独立查询和挂起报修各自保留。
 
-以下截图来自实际本地运行，企业及设备均使用脱敏示例。前端画面保留“演示”标识，后端运行记录单独展示。
+![售后工作台：报修信息核对、待确认任务与查询记录](docs/screenshots/repair-confirmation.png)
 
-**售后工作台 · 前端演示**
-
-![售后工作台：企业选择、会话入口、任务与执行记录](docs/screenshots/workbench.png)
-
-<details>
-<summary>报修确认：补充设备与故障，核对后再提交</summary>
-
-前端演示将报修与进度查询分开保留。此图为等待确认状态，按钮生成的是组件内存中的演示工单。
-
-![报修确认：设备、故障与待提交任务](docs/screenshots/repair-confirmation.png)
-
-</details>
+> 截图来自实际本地运行，保留合成数据与演示标识。前端按钮只操作组件内存，不代表后端建单成功；真实业务执行记录见下方。
 
 <details>
 <summary>设备台账与保养计划</summary>
 
-设备用 DEMO 编号区分；保养页展示临期、逾期和正常状态，以及型号对应项目。页面内的自动提醒标注为规划中。
+![设备台账](docs/screenshots/device-maintenance.png)
 
-![设备台账：三个脱敏示例设备](docs/screenshots/device-maintenance.png)
-
-![保养计划：临期、逾期和正常状态](docs/screenshots/maintenance-plan.png)
+![保养计划](docs/screenshots/maintenance-plan.png)
 
 </details>
 
 <details>
-<summary>后端实际运行：等待确认 → 独立查询 → 确认建单</summary>
+<summary>真实 Python 业务执行：等待确认 → 独立查询 → 确认建单</summary>
 
-以下是 `python examples/demo_service.py` 的真实 stdout 整理视图，运行时读写临时 SQLite。它是运行记录展示，不是后台产品界面；未调用模型或发送飞书消息。
+以下图片将 `examples/demo_service.py` 的实际 stdout 整理为可读视图。程序读写临时 SQLite，确认前不建单，查询后保留报修，确认后保存工单；未调用模型或发送渠道消息。此图是执行记录视图。
 
-![后端实际运行记录：确认前不建单，独立查询保留报修，确认后创建工单](docs/screenshots/backend-workflow.png)
+![业务引擎实际执行记录](docs/screenshots/backend-workflow.png)
 
 </details>
 
-截图复现方式见 [截图说明](docs/screenshots/README.md)。
+截图复现命令见 [截图说明](docs/screenshots/README.md)。
 
-## 一条报修链路
+## 工程验证
 
-```text
-“报修 DEMO-GR75-0001 异响” → 校验身份与设备 → 等待用户确认
-“查工单进度”              → 独立只读查询 → 原报修继续等待
-“确认报修”                → 校验可信原文 → 创建工单并保存回执
-重复收到同一确认消息       → 返回原结果   → 不重复建单
-```
-
-程序决定作用域、确认条件和写操作；模型提供意图及实体候选。待确认状态保存到数据库，设备不明确、字段缺失、跨企业访问或上下文超限时有明确失败路径。
-
-## 能力地图
-
-| 模块 | 当前实现 | 源码入口 |
+| 验证层 | 已核验结果 | 证据 |
 | --- | --- | --- |
-| 意图与状态路由 | 结构化候选校验、缺字段澄清、确认建单、查询不覆盖待处理报修 | [service.py](backend/acs/service.py) |
-| 企业隔离 | 可信会话绑定、默认拒绝、设备/工单归属校验、绑定变更隔离旧任务 | [identity.py](backend/acs/identity.py) |
-| 上下文与预算 | 6 段按阶段装配，来源/摘要/哈希审计，字节预算、告警与阻断 | [context.py](backend/acs/context.py) |
-| 业务工具 | 报修、保养、进度、保养扫描、零件申领和内部审批 | [tools.py](backend/acs/tools.py) |
-| Runtime 接入 | Node→Python CLI，可信原文和事件 ID 注入，当前 Pi 入口的上下文检查 | [acs-tools.ts](vendor/miniclaw/container/agent-runner/src/acs-tools.ts) |
-| 流程 Benchmark | 16 个场景，标注意图、澄清、允许工具、目标状态及工单数 | [service_cases.json](evals/service_cases.json) |
-| 售后工作台 | 对话、设备确认、任务与工单演示 | [前端说明](apps/service-console/README.md) |
+| 业务规则回归 | 50 项 Python 测试通过 | [测试源码](backend/tests/test_service.py) · [验证记录](docs/validation.md) |
+| 离线业务场景 | 16/16 通过，2026-10-10 复验 | [评估集](evals/service_cases.json) · [完整 JSON 报告](docs/verification/service-benchmark.json) |
+| 桌面与移动端交互 | 12 项通过 | [交互测试](apps/service-console/tests/service.spec.ts) |
+| Node → Python 工具桥 | 真实子进程集成通过 | [集成测试](vendor/miniclaw/tests/acs-service-bridge.test.ts) |
+| 类型与构建 | 独立工作台、Pi Runner 及管理台构建通过 | [持续验证](https://github.com/siye566/fengyun-service-agent/actions/workflows/verify.yml) |
 
-```mermaid
-flowchart LR
-    U[用户消息] --> H[Host 可信身份与消息 ID]
-    H --> P[Pi 结构化候选]
-    C[分段上下文与预算] --> P
-    P --> G[状态与业务校验]
-    G --> Q[澄清 / 等待确认]
-    G --> T[领域工具]
-    T --> D[(SQLite 工单与状态)]
-    D --> C
-    D --> R[结果与执行回执]
-```
+业务与界面基线验证于 2026-10-08，评估报告可按命令复现。CI 每次 push / PR 自动运行；状态以 Actions 为准。**16/16 是业务契约通过率，不是模型意图准确率或渠道端到端通过率。**
 
 ## 快速体验
 
-### 独立售后工作台
+### 售后工作台
 
-需要 Node.js 20+，无需模型密钥、Python 或通用运行时依赖。
+需要 Node.js 20+。从根目录安装和启动，前端无需模型密钥或通用运行时依赖。
 
 ```bash
 git clone https://github.com/siye566/fengyun-service-agent.git
@@ -119,42 +107,47 @@ npm ci
 npm run dev
 ```
 
-打开 `http://127.0.0.1:5173/`，直接进入售后工作台。报修确认、任务、设备与工单均使用内存演示数据，刷新后重置；界面按钮尚未接入业务引擎。`npm run build` 生成独立前端产物。
+打开 `http://127.0.0.1:5173/`。当前工作台为合成数据模式，刷新后恢复初始数据；`npm run build` 检查类型并生成独立产物。
 
-### 真实业务引擎：无需模型密钥
+### 业务引擎与评估
 
-需要 Python 3.10+。在仓库根目录执行，demo 与 Benchmark 使用临时数据库，退出后自动清理。
+需要 Python 3.10+。在仓库根目录创建环境并运行：
 
-```bash
+```powershell
 python -m venv .venv
-# Windows PowerShell:
 .venv\Scripts\python.exe -m pip install -r requirements-dev.txt
 .venv\Scripts\python.exe examples/demo_service.py
 .venv\Scripts\python.exe -m pytest -q
 .venv\Scripts\python.exe evals/run_service_eval.py --output evals/reports/service.json
 ```
 
-macOS / Linux 将 `.venv\Scripts\python.exe` 替换为 `.venv/bin/python`。安装 Node.js 后也可使用根目录统一命令：
+macOS / Linux 将解释器路径替换为 `.venv/bin/python`。示例和场景评估使用临时数据库，退出后清理。安装 Node.js 后也可运行 `npm run demo`、`npm test`、`npm run eval`；脚本优先使用根目录 `.venv`，支持 `ACS_AGENT_PYTHON`。
 
-| 命令 | 用途 |
-| --- | --- |
-| `npm run dev` | 启动独立售后工作台 |
-| `npm run build` | 工作台类型检查与生产构建 |
-| `npm run demo` | 报修 → 独立查询 → 确认建单的实际 Python 运行 |
-| `npm test` | 业务规则、隔离、恢复、预算与去重测试 |
-| `npm run eval` | 离线业务场景及 JSON 报告 |
-| `npm run test:ui` | 桌面与移动端交互回归（需 Playwright 浏览器） |
+桌面与移动端回归：先 `npx playwright install chromium`，再 `npm run test:ui`。
 
-Python 命令自动优先使用根目录 `.venv`，也可设置 `ACS_AGENT_PYTHON` 指定解释器。
+### 真实模型与渠道接入
 
-### 可选：接入模型与真实会话
+Host/Pi 需要绑定可信会话身份、配置模型及 Python 引擎路径。安装步骤、作用域要求和管理台启动见 [接入指南](docs/run-service-mode.md)。容器挂载和真实渠道收发需另行配置与验收。
 
-售后界面和业务 demo 可独立运行。只有需要 Host/Pi、渠道和真实模型时，才安装 `vendor/miniclaw` 的依赖并配置可信会话身份。完整步骤见 [Pi 接入指南](docs/run-service-mode.md)。
+## 系统架构与源码
 
-## 验证与边界
+```text
+apps/service-console/   React 售后工作台与交互测试
+backend/acs/            领域服务、状态路由、身份、上下文与 SQLite
+backend/tests/          业务规则及失败路径回归
+evals/                  离线场景集与评估执行器
+examples/               三轮报修链路入口
+scripts/                统一运行命令
+docs/                   架构、工程设计、截图、验证与交付范围
+vendor/                 通用运行时及工具桥集成
+```
 
-本地验证：**50 项 Python 测试、16/16 离线业务场景、12 项桌面/移动端交互回归、真实 Node→Python 集成测试，独立工作台与 Pi Runner 构建通过**。CI 在 push 和 PR 时复验并提供报告；详细命令与范围见 [验证记录](docs/validation.md)。
+[架构与阅读顺序](docs/architecture.md) · [关键工程设计](docs/engineering-decisions.md) · [目录迁移](docs/directory-migration.md)
 
-- Benchmark 检查业务契约；不是模型意图准确率或飞书收发通过率。
-- 上下文预算按 UTF-8 bytes 计算；不是整个模型窗口的精确 token 预算。
-- 当前权限为企业客户与合并内部角色；不声称已经完成细分财务 RBAC、自动派单、生产上线或业务收益。
+## 实现范围
+
+已实现：领域工具、企业作用域、受控报修、状态持久化、去重恢复、上下文预算、独立工作台及自动回归。
+
+待接入：工作台业务 API、细分内部角色、自动提醒/派单，以及真实模型和渠道端到端验收。上下文预算以 UTF-8 bytes 计量。公开版本不附生产上线、经营收益或模型准确率主张；后续计划见 [交付范围](docs/roadmap.md)。
+
+公开数据经过脱敏或合成处理，不包含客户材料、凭证、生产数据库或会话日志。代码来源和改动范围见 [NOTICE](NOTICE.md)，许可全文见 [LICENSE](LICENSE)。
