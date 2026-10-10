@@ -4,6 +4,20 @@
 
 [关键工程设计](engineering-decisions.md) · [验证结果](verification/README.md) · [交付范围](roadmap.md)
 
+## Agent 执行层：Pi SDK
+
+本项目在可选 Host 运行时中接入 Pi SDK。锁定依赖是 `@earendil-works/pi-coding-agent@0.84.2`，`pi-runtime.ts` 调用 `createAgentSession()` 创建会话，将宿主适配后的领域工具传入 `customTools`。`pi-index.ts` 注册售后工具与可信消息上下文，工具桥启动 Python CLI，Python 决定身份、确认条件与业务写操作。
+
+| 层 | 当前实现 | 源码 |
+| --- | --- | --- |
+| 会话与渠道宿主 | Host 执行模式、可信身份与事件 ID | [Pi 入口](../vendor/miniclaw/container/agent-runner/src/pi-index.ts) |
+| Agent SDK | Pi 会话、模型执行与工具调用 | [SDK 适配](../vendor/miniclaw/container/agent-runner/src/runtime/pi/pi-runtime.ts) · [锁定依赖](../vendor/miniclaw/container/agent-runner/package.json) |
+| 业务工具桥 | 可信原文与结构化候选进入 Python | [acs-tools.ts](../vendor/miniclaw/container/agent-runner/src/acs-tools.ts) |
+| 领域引擎与存储 | Python 状态机、权限与 PostgreSQL | [业务路由](../backend/acs/service.py) · [数据库](../backend/acs/db.py) |
+| 独立工作台 | React 合成数据交互，未调用 Pi 或领域 API | [AgentDesk.tsx](../apps/service-console/src/features/service/AgentDesk.tsx) |
+
+## 模块关系
+
 ```mermaid
 flowchart TB
     subgraph Product[售后业务模块]
@@ -13,7 +27,7 @@ flowchart TB
       ID[identity.py · 企业与设备归属]
       CT[context.py · 分段预算及来源审计]
       TL[tools.py · 领域工具]
-      DB[(SQLite · 任务/工单/回执)]
+      DB[(PostgreSQL · 任务/工单/回执)]
       EV[evals · 16 场景]
     end
     EX --> WF
@@ -23,7 +37,8 @@ flowchart TB
     WF --> TL
     TL --> DB
     DB --> WF
-    RT[vendor · 可选 Host/Pi 运行时] --> BR[acs-tools.ts · 可信消息与 Python 桥]
+    RT[vendor · 可选 Host 运行时] --> PI[Pi SDK · createAgentSession]
+    PI --> BR[acs-tools.ts · 可信消息与 Python 桥]
     BR --> WF
     UI -. 后续接入：当前未连后端 .-> WF
 ```

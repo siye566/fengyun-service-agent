@@ -1,6 +1,22 @@
-# 本地验证记录
+# 验证记录
 
-复验日期：2026-10-08。目录迁移后，使用脱敏示例与临时数据库重新验证，没有使用模型或渠道凭证。
+## 2026-10-10：PostgreSQL 业务库
+
+真实 PostgreSQL 17.11、Python 3.10、psycopg 3。测试与评估通过独立临时 schema 隔离，没有使用模型或渠道凭证。
+
+| 验证 | 结果 | 范围 |
+| --- | --- | --- |
+| `python -m pytest -q` | 55 项通过 | 原有业务契约及新增回滚、schema 隔离、并发编号、重复审批 |
+| `python evals/run_service_eval.py` | 16/16 通过 | 真实 PostgreSQL 状态、工具许可及实际工单数 |
+| `python examples/demo_service.py` | 三轮通过 | 等待确认 → 查询保留报修 → 确认建单 |
+| `npm run test:bridge` | 1 项通过 | 真实子进程共享 PostgreSQL，可信文本与重复回执 |
+| 后端执行记录图 | 已重新生成 | 本次 PostgreSQL 示例的真实 stdout；没有调用模型或渠道 |
+
+公开报告与复现步骤见 [verification/README.md](verification/README.md)。CI 启动真实 PostgreSQL 17 服务复验，并上传评估报告。
+
+## 2026-10-08：目录迁移历史基线
+
+以下为换库之前的历史基线，不代表 PostgreSQL 验证结果。目录迁移后，使用脱敏示例与临时数据库重新验证，没有使用模型或渠道凭证。
 
 | 命令（仓库根目录） | 结果 | 证明范围 |
 | --- | --- | --- |

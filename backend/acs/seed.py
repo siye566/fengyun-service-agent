@@ -9,7 +9,7 @@ import os
 import sys
 from datetime import date, datetime, timedelta
 
-from .db import connect
+from .db import connect, begin_write, initialize
 
 DEVICES = [
     # 企业, 型号, 序列号, 安装日期, 距今天数-上次保养, 周期(天)
@@ -54,9 +54,11 @@ MAINTENANCE_PLANS = [
 ]
 
 
-def seed(db_path: str | None = None, reset: bool = False) -> dict:
-    conn = connect(db_path)
+def seed(db_url: str | None = None, reset: bool = False) -> dict:
+    initialize(db_url)
+    conn = connect(db_url)
     try:
+        begin_write(conn)
         existing = conn.execute("SELECT COUNT(*) AS n FROM devices").fetchone()["n"]
         if existing and not reset:
             return {"seeded": False, "reason": f"台账已有 {existing} 台设备，跳过（要重写请加 --reset）"}
@@ -71,29 +73,29 @@ def seed(db_path: str | None = None, reset: bool = False) -> dict:
             last_maint = (today - timedelta(days=days_ago)).isoformat()
             conn.execute(
                 "INSERT INTO devices (company_name, model, serial_no, installed_date,"
-                " last_maintenance_date, maintenance_interval_days) VALUES (?, ?, ?, ?, ?, ?)",
+                " last_maintenance_date, maintenance_interval_days) VALUES (%s, %s, %s, %s, %s, %s)",
                 (company, model, serial, installed, last_maint, interval),
             )
-        conn.executemany(
+        conn.cursor().executemany(
             "INSERT INTO fault_kb (model, symptom, possible_cause, check_steps, parts_involved)"
-            " VALUES (?, ?, ?, ?, ?)",
+            " VALUES (%s, %s, %s, %s, %s)",
             FAULT_KB,
         )
-        conn.executemany(
-            "INSERT INTO parts (part_no, name, fit_models, stock, price) VALUES (?, ?, ?, ?, ?)",
+        conn.cursor().executemany(
+            "INSERT INTO parts (part_no, name, fit_models, stock, price) VALUES (%s, %s, %s, %s, %s)",
             PARTS,
         )
-        conn.executemany(
-            "INSERT INTO maintenance_plans (model, items, updated_at) VALUES (?, ?, ?)",
+        conn.cursor().executemany(
+            "INSERT INTO maintenance_plans (model, items, updated_at) VALUES (%s, %s, %s)",
             [(model, items, datetime.now().isoformat(timespec="seconds"))
              for model, items in MAINTENANCE_PLANS],
         )
         # 管理员的会话绑成 internal（全量视图）；逗号分隔可用 ACS_INTERNAL_SCOPES 覆盖
         internal_scopes = os.environ.get("ACS_INTERNAL_SCOPES", "web:main").split(",")
         now = datetime.now().isoformat(timespec="seconds")
-        conn.executemany(
-            "INSERT OR REPLACE INTO company_bindings (scope_key, company_name, role, bound_at)"
-            " VALUES (?, '', 'internal', ?)",
+        conn.cursor().executemany(
+            "INSERT INTO company_bindings (scope_key, company_name, role, bound_at)"
+            " VALUES (%s, '', 'internal', %s) ON CONFLICT (scope_key) DO UPDATE SET company_name=EXCLUDED.company_name, role=EXCLUDED.role, bound_at=EXCLUDED.bound_at",
             [(scope.strip(), now) for scope in internal_scopes if scope.strip()],
         )
         conn.commit()

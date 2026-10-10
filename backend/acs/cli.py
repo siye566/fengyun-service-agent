@@ -4,14 +4,13 @@
 信封 JSON 走 stdout（UTF-8）。scope_key = 调用者身份（Miniclaw chatJid），
 由 identity.py 按绑定表解析，未绑定一律拒绝（fail-closed）。
 Node 侧用环境变量 ACS_AGENT_PYTHON / ACS_AGENT_ROOT 定位解释器与项目，
-ACS_DB_PATH 可重定向数据库（测试用）。
+ACS_DATABASE_URL 指定 PostgreSQL，ACS_DB_SCHEMA 可隔离测试 schema。
 
 设计动机见 STAGES.md 决策记录：当前 Miniclaw 构建的 Pi 运行时不消费外部
 MCP 服务器，领域工具以 runner 内置工具的身份注册，执行体仍是本 Python 包
 ——单一事实源不变，pytest 直接测到的逻辑就是模型调到的逻辑。
 """
 import json
-import os
 import sys
 
 from . import tools
@@ -31,7 +30,7 @@ ROUTES = {
     "query_part_requests": tools.query_part_requests,
 }
 
-# 各工具在 ROUTES 函数签名里的参数顺序（不含 scope_key / db_path）
+# 各工具在 ROUTES 函数签名里的参数顺序（不含 scope_key / db_url）
 ARG_NAMES = {
     "route_service_turn": ("utterance", "session_id", "event_id", "parsed"),
     "build_service_context": ("session_id",),
@@ -74,7 +73,7 @@ def main(argv: list[str]) -> int:
         ), ensure_ascii=False))
         return 2
 
-    db_path = os.environ.get("ACS_DB_PATH") or None
+    db_url = None  # PostgreSQL URL and optional schema come from trusted environment
     known = set(ARG_NAMES[tool_name])
     extra = {k: v for k, v in args.items() if k not in known}
     filtered = {k: args[k] for k in ARG_NAMES[tool_name] if k in args}
@@ -82,11 +81,11 @@ def main(argv: list[str]) -> int:
         result = tools.list_company_tickets(
             filtered.get("company_name", ""),
             scope_key=scope_key,
-            db_path=db_path,
+            db_url=db_url,
             limit=extra.pop("limit", None) or 10,
         )
     else:
-        result = fn(db_path=db_path, scope_key=scope_key, **filtered, **extra)
+        result = fn(db_url=db_url, scope_key=scope_key, **filtered, **extra)
     print(json.dumps(result, ensure_ascii=False))
     return 0
 

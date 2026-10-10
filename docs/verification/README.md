@@ -1,14 +1,17 @@
 # 可复现验证记录
 
-公开验证使用合成企业、设备和工单，不连接客户系统。每个业务场景运行在独立临时 SQLite 中，检查阶段、工具许可、错误码及实际工单数量。
+公开验证使用合成企业、设备和工单，不连接客户系统。每个业务场景运行在真实 PostgreSQL 的独立临时 schema 中，检查阶段、工具许可、错误码及实际工单数量。
 
-## 2026-10-10：离线业务场景复验
+## 2026-10-10：PostgreSQL 迁移复验
 
 - 结果：**16/16 通过**，各场景失败列表均为空。
+- 数据库：PostgreSQL 17.11；驱动：psycopg 3；Python 3.10。
 - 原始结果：[service-benchmark.json](service-benchmark.json)。
 - 输入与断言：[service_cases.json](../../evals/service_cases.json)。
 - 执行器：[run_service_eval.py](../../evals/run_service_eval.py)。
-- 业务源码基线：[`e07a65f`](https://github.com/siye566/fengyun-service-agent/commit/e07a65f8200a73a500024672ca4d6abd57b3c668)。本次页面与文档更新没有修改业务实现。
+- 当前业务实现：[PostgreSQL 连接与建表](../../backend/acs/db.py)、[业务状态路由](../../backend/acs/service.py)。本次已实际迁移驱动、SQL、事务、测试与工具桥数据库配置。
+- **55 项 Python 测试通过**，包含 5 项新增 PostgreSQL 回归：[事务回滚、schema 隔离、并发编号及重复审批](../../backend/tests/test_postgres.py)。
+- **Node → Python 工具桥集成通过**：可信原文确认、跨进程状态、稳定回执与动态身份均通过真实 PostgreSQL 验证。
 
 | 场景 ID | 验证内容 | 结果 |
 | --- | --- | --- |
@@ -29,7 +32,7 @@
 | model-extraction-contract | 合法结构化候选进入业务状态机 | 通过 |
 | invalid-model-schema | 非法候选 Schema 被拒绝 | 通过 |
 
-复现时在仓库根目录运行：
+先完成 [PostgreSQL 配置](../database.md)，再在仓库根目录运行：
 
 ```powershell
 python -m venv .venv

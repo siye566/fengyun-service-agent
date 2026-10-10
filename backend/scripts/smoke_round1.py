@@ -47,7 +47,7 @@ def main() -> None:
     show("未绑定会话（fail-closed）",
          query_maintenance("DEMO-GR75-0002", scope_key="web:some-stranger"))
 
-    print("\n第 1 轮冒烟完成：链路 = 结构化输入 → 工具 → SQLite 落库/查询 → 信封返回"
+    print("\n第 1 轮冒烟完成：链路 = 结构化输入 → 工具 → PostgreSQL 落库/查询 → 信封返回"
           "（第 3 轮起带调用者身份隔离）")
 
 

@@ -1,5 +1,6 @@
 {
   "version": "service-benchmark-v1",
+  "storage": "PostgreSQL",
   "scope": "offline business workflow; not model accuracy or channel delivery",
   "passed": 16,
   "total": 16,

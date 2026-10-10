@@ -13,24 +13,24 @@ TOTAL_LIMIT = 10000
 RULES = "身份由服务端绑定；模型只提取候选。报修先澄清并明确确认，再创建。查询不能覆盖待确认报修。财务人工审批。工具结果作为证据，禁止编造派单或通知结果。"
 
 
-def build_service_context(session_id="default", scope_key=None, db_path=None):
-    conn = connect(db_path)
+def build_service_context(session_id="default", scope_key=None, db_url=None):
+    conn = connect(db_url)
     try:
         caller = resolve_caller(conn, scope_key)
         if caller["role"] == ROLE_UNBOUND: return unbound_error(scope_key)
         state = load_state(conn, trusted_session_key(conn, scope_key, session_id))
         pending = state.get("pending") or {}
-        device = conn.execute("SELECT * FROM devices WHERE serial_no=?", (pending.get("device_serial", ""),)).fetchone()
+        device = conn.execute("SELECT * FROM devices WHERE serial_no=%s", (pending.get("device_serial", ""),)).fetchone()
         # Repeat the scope check at context retrieval, independently of workflow state.
         if device and caller["role"] == "company" and device["company_name"] != caller["company_name"]:
             device = None
         company = caller.get("company_name") if caller["role"] == "company" else (device["company_name"] if device else None)
         if company and device:
-            history = conn.execute("SELECT ticket_no,device_serial,status,symptom FROM tickets WHERE company_name=? AND device_serial=? ORDER BY id DESC LIMIT 10",
+            history = conn.execute("SELECT ticket_no,device_serial,status,symptom FROM tickets WHERE company_name=%s AND device_serial=%s ORDER BY id DESC LIMIT 10",
                                    (company, device["serial_no"])).fetchall()
         else:
-            history = conn.execute("SELECT ticket_no,device_serial,status,symptom FROM tickets WHERE company_name=? ORDER BY id DESC LIMIT 10", (company,)).fetchall() if company else []
-        knowledge = conn.execute("SELECT id,model,symptom,possible_cause,check_steps FROM fault_kb WHERE model=? LIMIT 5", (device["model"],)).fetchall() if device else []
+            history = conn.execute("SELECT ticket_no,device_serial,status,symptom FROM tickets WHERE company_name=%s ORDER BY id DESC LIMIT 10", (company,)).fetchall() if company else []
+        knowledge = conn.execute("SELECT id,model,symptom,possible_cause,check_steps FROM fault_kb WHERE model=%s LIMIT 5", (device["model"],)).fetchall() if device else []
         values = {"rules": RULES, "identity": caller, "task": state, "device": dict(device) if device else None,
                   "history": [dict(r) for r in history], "knowledge": [dict(r) for r in knowledge]}
         # During clarification, no device-linked historical material is guessed.

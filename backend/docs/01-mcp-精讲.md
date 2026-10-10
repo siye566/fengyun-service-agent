@@ -33,7 +33,7 @@ Miniclaw（宿主）                        acs-server（我们的子进程）
 
 1. **list_tools**：宿主向服务器要工具清单——函数名 + 类型注解 + **docstring** 打包成模型可读的描述；
 2. 模型在对话中决定调用：发出结构化参数（`{"company_name": "...", "device_serial": "..."}`）；
-3. 宿主把参数转发给我们的服务器，**真正的 Python 代码在 SQLite 上执行**；
+3. 宿主把参数转发给我们的服务器，**真正的 Python 代码在 PostgreSQL 上执行**；
 4. 信封结果回传给模型 → 模型把 `advice`/`status_text` 转成人话给客户。
 
 **推论（重要）**：docstring 就是工具的"产品说明书"，读者是模型。

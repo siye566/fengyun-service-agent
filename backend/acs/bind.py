@@ -11,31 +11,32 @@ scope_key = Miniclaw 的 chatJid（如 web:main、feishu:ou_xxx）。
 import sys
 from datetime import datetime
 
-from .db import connect
+from .db import connect, begin_write
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 
 
 def bind(scope_key: str, company_name: str = "", internal: bool = False,
-         db_path: str | None = None) -> dict:
+         db_url: str | None = None) -> dict:
     if not scope_key.strip():
         return {"bound": False, "reason": "scope_key 不能为空"}
     if not internal and not company_name.strip():
         return {"bound": False, "reason": "企业客户绑定需要企业名称（或用 --internal）"}
     role = "internal" if internal else "company"
-    conn = connect(db_path)
+    conn = connect(db_url)
     try:
+        begin_write(conn)
         if role == "company":
             device = conn.execute(
-                "SELECT COUNT(*) AS n FROM devices WHERE company_name = ?",
+                "SELECT COUNT(*) AS n FROM devices WHERE company_name = %s",
                 (company_name.strip(),),
             ).fetchone()["n"]
             if device == 0:
                 print(f"提示：台账中没有企业 {company_name.strip()} 的设备，绑定仍会生效")
         conn.execute(
-            "INSERT OR REPLACE INTO company_bindings"
-            " (scope_key, company_name, role, bound_at) VALUES (?, ?, ?, ?)",
+            "INSERT INTO company_bindings"
+            " (scope_key, company_name, role, bound_at) VALUES (%s, %s, %s, %s) ON CONFLICT (scope_key) DO UPDATE SET company_name=EXCLUDED.company_name, role=EXCLUDED.role, bound_at=EXCLUDED.bound_at",
             (scope_key.strip(), "" if internal else company_name.strip(), role,
              datetime.now().isoformat(timespec="seconds")),
         )

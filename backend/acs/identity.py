@@ -9,7 +9,7 @@ internal 角色。**默认拒绝**：未绑定的会话调任何工具都拿 cal
 - company（企业客户）：只能看到绑定企业的设备与工单；建单强制落到绑定企业；
   列表工具无视传入的企业名（按构造防越权，不靠模型自觉）。
 """
-import sqlite3
+from psycopg import Connection
 from datetime import datetime
 
 from .results import err
@@ -19,12 +19,12 @@ ROLE_COMPANY = "company"
 ROLE_UNBOUND = "unbound"
 
 
-def resolve_caller(conn: sqlite3.Connection, scope_key: str | None) -> dict:
+def resolve_caller(conn: Connection, scope_key: str | None) -> dict:
     if not scope_key or not str(scope_key).strip():
         return {"role": ROLE_UNBOUND, "scope_key": scope_key}
     key = scope_key.strip()
     row = conn.execute(
-        "SELECT role, company_name FROM company_bindings WHERE scope_key = ?",
+        "SELECT role, company_name FROM company_bindings WHERE scope_key = %s",
         (key,),
     ).fetchone()
     if row is None and "#" in key:
@@ -32,7 +32,7 @@ def resolve_caller(conn: sqlite3.Connection, scope_key: str | None) -> dict:
         # 其中所有会话/定时任务自动继承（精确键仍优先，可做更细的覆盖）
         base = key.split("#", 1)[0]
         row = conn.execute(
-            "SELECT role, company_name FROM company_bindings WHERE scope_key = ?",
+            "SELECT role, company_name FROM company_bindings WHERE scope_key = %s",
             (base,),
         ).fetchone()
     if row is None:

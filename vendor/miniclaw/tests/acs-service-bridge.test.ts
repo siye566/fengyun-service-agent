@@ -1,27 +1,35 @@
 import { afterEach, expect, test, vi } from 'vitest';
-import fs from 'node:fs';
-import os from 'node:os';
+import { randomUUID } from 'node:crypto';
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import type { McpContext } from '../container/agent-runner/src/mcp-tools.js';
 
-const directories: string[] = [];
+const schemas: { schema: string; python: string; engine: string }[] = [];
 afterEach(() => {
   vi.unstubAllEnvs();
-  for (const directory of directories.splice(0)) fs.rmSync(directory, { recursive: true, force: true });
+  for (const { schema, python, engine } of schemas.splice(0)) {
+    execFileSync(python, ['-c', 'import sys,psycopg; from psycopg import sql; from acs.db import database_url; c=psycopg.connect(database_url(),autocommit=True); c.execute(sql.SQL("DROP SCHEMA {} CASCADE").format(sql.Identifier(sys.argv[1]))); c.close()', schema], {
+      env: { ...process.env, PYTHONPATH: engine, PYTHONUTF8: '1' }, windowsHide: true,
+    });
+  }
 });
 
 test('trusted host text, mutable scope and stable receipts reach the real Python workflow', async () => {
   vi.resetModules();
-  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fengyun-bridge-'));
-  directories.push(directory);
   const engine = path.resolve('../../backend');
-  const python = process.env.ACS_TEST_PYTHON || 'python';
+  const venv = path.resolve('../../.venv', process.platform === 'win32' ? 'Scripts/python.exe' : 'bin/python');
+  const python = process.env.ACS_TEST_PYTHON || (existsSync(venv) ? venv : 'python');
+  const schema = `acs_bridge_${randomUUID().replaceAll('-', '')}`;
+  execFileSync(python, ['-c', 'import sys,psycopg; from psycopg import sql; from acs.db import database_url; c=psycopg.connect(database_url(),autocommit=True); c.execute(sql.SQL("CREATE SCHEMA {}").format(sql.Identifier(sys.argv[1]))); c.close()', schema], {
+    env: { ...process.env, PYTHONPATH: engine, PYTHONUTF8: '1' }, windowsHide: true,
+  });
+  schemas.push({ schema, python, engine });
   vi.stubEnv('ACS_SERVICE_MODE', '1');
   vi.stubEnv('ACS_AGENT_PYTHON', python);
   vi.stubEnv('ACS_AGENT_ROOT', engine);
-  vi.stubEnv('ACS_DB_PATH', path.join(directory, 'service.sqlite3'));
-  execFileSync(python, ['-c', 'import os; from acs.seed import seed; from acs.bind import bind; p=os.environ["ACS_DB_PATH"]; seed(p); bind("web:demo-a", "示例企业甲", db_path=p)'], {
+  vi.stubEnv('ACS_DB_SCHEMA', schema);
+  execFileSync(python, ['-c', 'from acs.seed import seed; from acs.bind import bind; seed(); bind("web:demo-a", "示例企业甲")'], {
     env: { ...process.env, PYTHONPATH: engine, PYTHONUTF8: '1' },
   });
   const { createAcsTools, buildAcsSessionContext } = await import('../container/agent-runner/src/acs-tools.js');

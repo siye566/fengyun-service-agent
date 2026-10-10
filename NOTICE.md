@@ -4,7 +4,7 @@
 
 | 位置 | 职责与来源 |
 | --- | --- |
-| `backend/acs/` | 售后领域工具、企业绑定、SQLite、状态路由及上下文装配 |
+| `backend/acs/` | 售后领域工具、企业绑定、PostgreSQL、状态路由及上下文装配 |
 | `apps/service-console/` | 从原工作台抽出的售后页面、任务交互、示例数据与样式；独立入口和精简依赖，保留合成演示标识 |
 | `evals/`、`examples/`、`scripts/` | 售后评估集、真实业务演示及统一运行入口 |
 | `vendor/miniclaw/` | 既有 Miniclaw 通用运行时代码快照，包含 Host、渠道、工作区、Web 管理台和 Pi Runner；本仓库在其上接入售后工具与可信消息上下文 |

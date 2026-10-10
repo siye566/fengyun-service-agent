@@ -1,0 +1,18 @@
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: acs
+      POSTGRES_USER: acs
+      POSTGRES_PASSWORD: ${ACS_POSTGRES_PASSWORD:?Set ACS_POSTGRES_PASSWORD in .env}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - acs-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U acs -d acs"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+volumes:
+  acs-postgres:

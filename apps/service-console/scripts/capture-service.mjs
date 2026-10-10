@@ -27,6 +27,7 @@ const screenshot = async name => {
   await page.screenshot({ path: path.join(output, name), fullPage: true, animations: 'disabled' });
 };
 try {
+  if (process.env.SERVICE_CAPTURE_BACKEND_ONLY !== '1') {
   await page.goto(`${process.env.SERVICE_PREVIEW_URL || 'http://127.0.0.1:5187'}/service-preview`);
   await page.getByRole('heading', { name: '与 Agent 一起处理售后需求' }).waitFor();
   await page.getByLabel('筛选演示企业').selectOption('示例企业乙');
@@ -52,6 +53,7 @@ try {
   await page.getByText('自动保养提醒 · 规划中').waitFor();
   await page.setViewportSize({ width: 1440, height: 1120 });
   await screenshot('maintenance-plan.png');
+  }
 
   // Present the actual CLI stdout in a clearly labelled documentation viewer.
   const stdout = execFileSync(process.env.ACS_CAPTURE_PYTHON || 'python', [
@@ -73,10 +75,10 @@ try {
     .step{font-size:26px;color:#187b70;font-weight:700}h2{font-size:18px;min-height:50px}.state{display:inline-block;border-radius:8px;background:#e3f3ed;padding:8px 12px;font-size:13px;color:#187b70}
     pre{font-family:Consolas,"Microsoft YaHei",monospace;font-size:12px;line-height:1.7;white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;border-radius:10px;padding:14px;color:#354b58}
     footer{margin-top:28px;font-size:13px;color:#617582}
-  </style><div class="eyebrow">ACTUAL CLI EXECUTION · TEMPORARY SQLITE</div><h1>后端报修流程 · 实际运行记录</h1>
+  </style><div class="eyebrow">ACTUAL CLI EXECUTION · POSTGRESQL · TEMPORARY SCHEMA</div><h1>后端报修流程 · 实际运行记录</h1>
   <p>同一次真实 Python 演示运行的 stdout，整理为可读视图。等待确认 → 独立查询 → 确认建单。<br>未调用模型，未发送飞书消息；这是运行记录视图，不是后台产品界面。</p>
-  <main>${cards}</main><footer>执行入口：python scripts/demo_service.py · 数据：示例企业与 DEMO 设备 · 临时数据库退出后清理</footer>`);
-  await screenshot('backend-workflow.png');
+  <main>${cards}</main><footer>执行入口：python examples/demo_service.py · 数据：示例企业与 DEMO 设备 · PostgreSQL 独立 schema 退出后清理</footer>`);
+  await screenshot('backend-postgresql-workflow.png');
   if (errors.length) throw new Error(errors.join('\n'));
   console.log(JSON.stringify({ screenshots: fs.readdirSync(output), browserErrors: errors.length, previewWarnings: warnings }));
 } finally {

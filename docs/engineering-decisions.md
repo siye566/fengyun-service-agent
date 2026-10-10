@@ -1,6 +1,6 @@
 # 关键工程设计
 
-本页说明已落实到业务代码的设计，以及取舍。验证使用公开合成样例与临时 SQLite，生产接入范围见 [实现对照](implementation-map.md)。
+本页说明已落实到业务代码的设计，以及取舍。验证使用公开合成样例与PostgreSQL 独立临时 schema，生产接入范围见 [实现对照](implementation-map.md)。
 
 ## 1. 用程序控制写操作
 
@@ -16,7 +16,7 @@
 
 用户等待报修确认时，仍可能查询工单进度。只读查询使用本次输入的设备/工单字段，查询后重新加载状态，不覆盖原报修的设备、故障或阶段。
 
-源码中的 `service_sessions` 保存任务状态，`service_turns` 保存事件结果。重启进程后可从 SQLite 读取待确认任务；相同事件重试返回已有结果。
+源码中的 `service_sessions` 保存任务状态，`service_turns` 保存事件结果。重启进程后可从 PostgreSQL 读取待确认任务；相同事件重试返回已有结果。
 
 - 源码：[状态路由](../backend/acs/service.py)、[数据结构](../backend/acs/db.py)。
 - 验证：[test_service.py](../backend/tests/test_service.py) 覆盖状态恢复、独立查询与重复事件。
@@ -34,11 +34,11 @@
 
 ## 4. 为写操作设置稳定业务键
 
-消息去重无法独自覆盖“建单成功、回执保存前进程退出”的窗口。报修任务保存稳定 `task_key`，建单使用它作为幂等键，并通过唯一约束和事务限制重复写入。提交状态保留为 `confirming`，用户重试同一确认可恢复原任务结果。
+消息去重无法独自覆盖“建单成功、回执保存前进程退出”的窗口。报修任务保存稳定 `task_key`，建单使用它作为幂等键，并通过唯一约束和事务限制重复写入。写事务还取得当前 schema 的 PostgreSQL advisory lock，保护编号生成与库存检查。提交状态保留为 `confirming`，用户重试同一确认可恢复原任务结果。
 
 - 源码：[create_repair_ticket](../backend/acs/tools.py)、[数据库约束](../backend/acs/db.py)。
 - 验证：重复确认、并发确认与中断后恢复均有回归。
-- 取舍：这保证了所测 SQLite 建单路径的业务去重，没有宣称外部渠道发送“恰好一次”。
+- 取舍：写事务按 schema 串行，没有附加吞吐量主张；这保证了所测 PostgreSQL 建单路径的业务去重，没有宣称外部渠道发送“恰好一次”。
 
 ## 5. 对上下文做分段预算与来源审计
 
@@ -55,3 +55,5 @@ React 工作台验证报修交互、待处理任务、工单筛选与设备入�
 当前工作台仍为合成数据模式，未连接领域 API；真实 Host/Pi 业务链路通过工具桥接入。后续集成须增加服务端鉴权、API 错误处理与状态一致性验证。
 
 验证记录见 [validation.md](validation.md)，自动复验入口见 [GitHub Actions](https://github.com/siye566/fengyun-service-agent/actions/workflows/verify.yml)。
+
+数据库启动、事务和导入边界见 [PostgreSQL 配置](database.md)。

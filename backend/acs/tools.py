@@ -8,10 +8,10 @@
 诚实原则（任务书 4.2）：知识库未收录就明说，不编造诊断；
 所有建议都带"最终以工程师现场确诊为准"的声明。
 """
-import sqlite3
+from psycopg import Connection
 from datetime import date, datetime, timedelta
 
-from .db import connect
+from .db import connect, begin_write
 from .identity import (
     ROLE_COMPANY,
     ROLE_INTERNAL,
@@ -35,13 +35,13 @@ STATUS_TEXT = {
 }
 
 
-def _device_by_serial(conn: sqlite3.Connection, serial_no: str):
+def _device_by_serial(conn: Connection, serial_no: str):
     return conn.execute(
-        "SELECT * FROM devices WHERE serial_no = ?", (serial_no,)
+        "SELECT * FROM devices WHERE serial_no = %s", (serial_no,)
     ).fetchone()
 
 
-def _guard(conn: sqlite3.Connection, scope_key: str | None) -> dict | None:
+def _guard(conn: Connection, scope_key: str | None) -> dict | None:
     """统一的前置闸门：未绑定直接拒绝；返回 None 表示放行。"""
     caller = resolve_caller(conn, scope_key)
     if caller["role"] == ROLE_UNBOUND:
@@ -56,7 +56,7 @@ def create_repair_ticket(
     urgency: str = "normal",
     ticket_type: str = "repair",
     scope_key: str | None = None,
-    db_path: str | None = None,
+    db_url: str | None = None,
     idempotency_key: str | None = None,
 ) -> dict:
     """报修：身份闸门 → 信息补全校验 → 台账校验 → 知识库检索 → 工单落库。
@@ -64,9 +64,9 @@ def create_repair_ticket(
     企业角色建单强制落到绑定企业（company_name 可省略；传入不符时以绑定
     为准并附 note）；internal 角色必须提供企业名称，可代客建单。
     """
-    conn = connect(db_path)
+    conn = connect(db_url)
     try:
-        conn.execute("BEGIN IMMEDIATE")
+        begin_write(conn)
         caller = resolve_caller(conn, scope_key)
         if caller["role"] == ROLE_UNBOUND:
             return unbound_error(caller["scope_key"])
@@ -119,16 +119,16 @@ def create_repair_ticket(
 
         if idempotency_key:
             existing = conn.execute(
-                "SELECT ticket_no FROM tickets WHERE idempotency_key = ? AND company_name = ?",
+                "SELECT ticket_no FROM tickets WHERE idempotency_key = %s AND company_name = %s",
                 (idempotency_key, company_name.strip()),
             ).fetchone()
             if existing:
                 conn.commit()
-                return query_ticket_status(existing["ticket_no"], scope_key, db_path)
+                return query_ticket_status(existing["ticket_no"], scope_key, db_url)
 
         # 知识库检索：按型号圈定范围，现象做包含匹配（"报 E3 故障"能命中"显示E3"）
         kb = conn.execute(
-            "SELECT * FROM fault_kb WHERE model = ? AND symptom LIKE ? LIMIT 1",
+            "SELECT * FROM fault_kb WHERE model = %s AND symptom LIKE %s LIMIT 1",
             (device["model"], f"%{symptom.strip()}%"),
         ).fetchone()
         if kb:
@@ -149,14 +149,14 @@ def create_repair_ticket(
 
         today = date.today().isoformat()
         seq = conn.execute(
-            "SELECT COUNT(*) AS n FROM tickets WHERE created_at LIKE ?",
+            "SELECT COUNT(*) AS n FROM tickets WHERE created_at LIKE %s",
             (f"{today}%",),
         ).fetchone()["n"]
         ticket_no = f"ACS-{today.replace('-', '')}-{seq + 1:03d}"
         conn.execute(
             "INSERT INTO tickets (ticket_no, company_name, device_serial, model,"
             " symptom, urgency, status, kb_id, advice, created_at, ticket_type, idempotency_key)"
-            " VALUES (?, ?, ?, ?, ?, ?, 'pending_dispatch', ?, ?, ?, ?, ?)",
+            " VALUES (%s, %s, %s, %s, %s, %s, 'pending_dispatch', %s, %s, %s, %s, %s)",
             (
                 ticket_no,
                 company_name.strip(),
@@ -191,7 +191,7 @@ def create_repair_ticket(
 
 
 def query_maintenance(
-    device_serial: str, scope_key: str | None = None, db_path: str | None = None
+    device_serial: str, scope_key: str | None = None, db_url: str | None = None
 ) -> dict:
     """保养查询：身份闸门 → 台账 → 上次保养 + 周期 → 剩余天数与状态。"""
     if not str(device_serial or "").strip():
@@ -201,7 +201,7 @@ def query_maintenance(
             "请提供要查询的设备序列号",
         )
 
-    conn = connect(db_path)
+    conn = connect(db_url)
     try:
         caller = resolve_caller(conn, scope_key)
         if caller["role"] == ROLE_UNBOUND:
@@ -252,7 +252,7 @@ def query_maintenance(
 
 
 def query_ticket_status(
-    ticket_no: str, scope_key: str | None = None, db_path: str | None = None
+    ticket_no: str, scope_key: str | None = None, db_url: str | None = None
 ) -> dict:
     """进度查询（按工单号）：任务书第三节"进度类"意图的工具。"""
     if not str(ticket_no or "").strip():
@@ -262,14 +262,14 @@ def query_ticket_status(
             "报修成功后会返回 ACS- 开头的工单号；客户记不得时可改用企业名称查历史工单",
         )
 
-    conn = connect(db_path)
+    conn = connect(db_url)
     try:
         caller = resolve_caller(conn, scope_key)
         if caller["role"] == ROLE_UNBOUND:
             return unbound_error(caller["scope_key"])
 
         row = conn.execute(
-            "SELECT * FROM tickets WHERE ticket_no = ?", (ticket_no.strip(),)
+            "SELECT * FROM tickets WHERE ticket_no = %s", (ticket_no.strip(),)
         ).fetchone()
         if row is None:
             return err(
@@ -303,7 +303,7 @@ def query_ticket_status(
 def list_company_tickets(
     company_name: str,
     scope_key: str | None = None,
-    db_path: str | None = None,
+    db_url: str | None = None,
     limit: int = 10,
 ) -> dict:
     """进度查询（按企业）："我上次报的工单怎么样了"时没有工单号的兜底。
@@ -311,7 +311,7 @@ def list_company_tickets(
     企业角色无视传入的 company_name，一律查绑定企业（按构造防越权枚举）；
     internal 角色按传入企业名查，支持包含匹配。
     """
-    conn = connect(db_path)
+    conn = connect(db_url)
     try:
         caller = resolve_caller(conn, scope_key)
         if caller["role"] == ROLE_UNBOUND:
@@ -328,8 +328,8 @@ def list_company_tickets(
             target = company_name.strip()
 
         rows = conn.execute(
-            "SELECT * FROM tickets WHERE company_name LIKE ?"
-            " ORDER BY created_at DESC, id DESC LIMIT ?",
+            "SELECT * FROM tickets WHERE company_name LIKE %s"
+            " ORDER BY created_at DESC, id DESC LIMIT %s",
             (f"%{target}%", int(limit)),
         ).fetchall()
         if not rows:
@@ -364,7 +364,7 @@ _OPEN_STATUSES = ("pending_dispatch", "awaiting_finance", "parts_approved")
 
 
 def scan_maintenance_due(
-    days_ahead: int = 7, scope_key: str | None = None, db_path: str | None = None
+    days_ahead: int = 7, scope_key: str | None = None, db_url: str | None = None
 ) -> dict:
     """保养台账扫描（任务书第五节，时间驱动主线）。
 
@@ -372,7 +372,7 @@ def scan_maintenance_due(
     （ticket_type=maintenance，建议=映射清单，模型不得即兴生成）。幂等：
     同一设备存在未完结保养单时跳过。
     """
-    conn = connect(db_path)
+    conn = connect(db_url)
     try:
         caller = resolve_caller(conn, scope_key)
         if caller["role"] != ROLE_INTERNAL:
@@ -390,8 +390,8 @@ def scan_maintenance_due(
             if days_left > days_ahead:
                 continue  # 还没到临期线
             open_ticket = conn.execute(
-                "SELECT ticket_no FROM tickets WHERE device_serial = ?"
-                " AND ticket_type = 'maintenance' AND status IN (?, ?, ?)"
+                "SELECT ticket_no FROM tickets WHERE device_serial = %s"
+                " AND ticket_type = 'maintenance' AND status IN (%s, %s, %s)"
                 " ORDER BY id DESC LIMIT 1",
                 (device["serial_no"], *_OPEN_STATUSES),
             ).fetchone()
@@ -408,11 +408,11 @@ def scan_maintenance_due(
                 urgency="low",
                 ticket_type="maintenance",
                 scope_key=scope_key,
-                db_path=db_path,
+                db_url=db_url,
             )
             if result["ok"]:
                 plan = conn.execute(
-                    "SELECT items FROM maintenance_plans WHERE model = ?",
+                    "SELECT items FROM maintenance_plans WHERE model = %s",
                     (device["model"],),
                 ).fetchone()
                 created.append({
@@ -442,7 +442,7 @@ def submit_part_request(
     part_no: str,
     quantity: int,
     scope_key: str | None = None,
-    db_path: str | None = None,
+    db_url: str | None = None,
 ) -> dict:
     """提交零件申领单（任务书第六节：工程师提交，无工单不受理）。internal 专用。"""
     if (not str(ticket_no or "").strip() or not str(part_no or "").strip()
@@ -452,8 +452,9 @@ def submit_part_request(
             "需要：关联工单号 ticket_no、零件编号 part_no、数量 quantity（≥1）",
             "申领单必须挂在一张真实工单下（无工单不受理）",
         )
-    conn = connect(db_path)
+    conn = connect(db_url)
     try:
+        begin_write(conn)
         caller = resolve_caller(conn, scope_key)
         if caller["role"] != ROLE_INTERNAL:
             return err(
@@ -462,7 +463,7 @@ def submit_part_request(
                 "如需零件，请联系为您服务的工程师",
             )
         ticket = conn.execute(
-            "SELECT * FROM tickets WHERE ticket_no = ?", (ticket_no.strip(),)
+            "SELECT * FROM tickets WHERE ticket_no = %s", (ticket_no.strip(),)
         ).fetchone()
         if ticket is None:
             return err(
@@ -471,7 +472,7 @@ def submit_part_request(
                 "申领单必须关联真实工单；请核对工单号",
             )
         part = conn.execute(
-            "SELECT * FROM parts WHERE part_no = ?", (part_no.strip(),)
+            "SELECT * FROM parts WHERE part_no = %s", (part_no.strip(),)
         ).fetchone()
         if part is None:
             return err(
@@ -494,20 +495,20 @@ def submit_part_request(
             )
         today = date.today().isoformat()
         seq = conn.execute(
-            "SELECT COUNT(*) AS n FROM part_requests WHERE created_at LIKE ?",
+            "SELECT COUNT(*) AS n FROM part_requests WHERE created_at LIKE %s",
             (f"{today}%",),
         ).fetchone()["n"]
         request_no = f"PR-{today.replace('-', '')}-{seq + 1:03d}"
         conn.execute(
             "INSERT INTO part_requests (request_no, ticket_no, part_no, part_name,"
             " quantity, requested_by, status, finance_comment, created_at)"
-            " VALUES (?, ?, ?, ?, ?, ?, 'pending_approval', '', ?)",
+            " VALUES (%s, %s, %s, %s, %s, %s, 'pending_approval', '', %s)",
             (request_no, ticket["ticket_no"], part["part_no"], part["name"],
              int(quantity), scope_key.strip(),
              datetime.now().isoformat(timespec="seconds")),
         )
         conn.execute(
-            "UPDATE tickets SET status = 'awaiting_finance' WHERE ticket_no = ?",
+            "UPDATE tickets SET status = 'awaiting_finance' WHERE ticket_no = %s",
             (ticket["ticket_no"],),
         )
         conn.commit()
@@ -529,7 +530,7 @@ def decide_part_request(
     decision: str,
     comment: str = "",
     scope_key: str | None = None,
-    db_path: str | None = None,
+    db_url: str | None = None,
 ) -> dict:
     """财务审批（人工闸门）：decision=approve/reject + 意见。internal 专用。
 
@@ -542,8 +543,9 @@ def decide_part_request(
             "decision 只能是 approve（通过）或 reject（拒绝）",
             "请明确审批结论和意见",
         )
-    conn = connect(db_path)
+    conn = connect(db_url)
     try:
+        begin_write(conn)
         caller = resolve_caller(conn, scope_key)
         if caller["role"] != ROLE_INTERNAL:
             return err(
@@ -552,7 +554,7 @@ def decide_part_request(
                 "请由财务在内部会话中明确给出通过/拒绝结论",
             )
         row = conn.execute(
-            "SELECT * FROM part_requests WHERE request_no = ?", (request_no.strip(),)
+            "SELECT * FROM part_requests WHERE request_no = %s", (request_no.strip(),)
         ).fetchone()
         if row is None:
             return err(
@@ -569,7 +571,7 @@ def decide_part_request(
         new_status = "approved" if decision == "approve" else "rejected"
         if new_status == "approved":
             part = conn.execute(
-                "SELECT * FROM parts WHERE part_no = ?", (row["part_no"],)
+                "SELECT * FROM parts WHERE part_no = %s", (row["part_no"],)
             ).fetchone()
             current = int(part["stock"]) if part else 0
             if current < int(row["quantity"]):
@@ -579,18 +581,18 @@ def decide_part_request(
                     "请先补库再批，或拒绝本单",
                 )
             conn.execute(
-                "UPDATE parts SET stock = stock - ? WHERE part_no = ?",
+                "UPDATE parts SET stock = stock - %s WHERE part_no = %s",
                 (int(row["quantity"]), row["part_no"]),
             )
         conn.execute(
-            "UPDATE part_requests SET status = ?, finance_comment = ?, decided_at = ?"
-            " WHERE request_no = ?",
+            "UPDATE part_requests SET status = %s, finance_comment = %s, decided_at = %s"
+            " WHERE request_no = %s",
             (new_status, str(comment or "").strip(),
              datetime.now().isoformat(timespec="seconds"), row["request_no"]),
         )
         ticket_status = "parts_approved" if new_status == "approved" else "parts_rejected"
         conn.execute(
-            "UPDATE tickets SET status = ? WHERE ticket_no = ?",
+            "UPDATE tickets SET status = %s WHERE ticket_no = %s",
             (ticket_status, row["ticket_no"]),
         )
         conn.commit()
@@ -608,7 +610,7 @@ def decide_part_request(
 
 
 def query_part_requests(
-    ticket_no: str, scope_key: str | None = None, db_path: str | None = None
+    ticket_no: str, scope_key: str | None = None, db_url: str | None = None
 ) -> dict:
     """按工单查零件申领单（企业客户可查自己工单的审批进度，任务书 6.2）。"""
     if not str(ticket_no or "").strip():
@@ -617,13 +619,13 @@ def query_part_requests(
             "还缺以下信息：工单号 ticket_no",
             "请提供要查询的工单号",
         )
-    conn = connect(db_path)
+    conn = connect(db_url)
     try:
         caller = resolve_caller(conn, scope_key)
         if caller["role"] == ROLE_UNBOUND:
             return unbound_error(caller["scope_key"])
         ticket = conn.execute(
-            "SELECT * FROM tickets WHERE ticket_no = ?", (ticket_no.strip(),)
+            "SELECT * FROM tickets WHERE ticket_no = %s", (ticket_no.strip(),)
         ).fetchone()
         if ticket is None:
             return err(
@@ -635,7 +637,7 @@ def query_part_requests(
                 and ticket["company_name"] != caller["company_name"]):
             return cross_company_error("工单", ticket["ticket_no"])
         rows = conn.execute(
-            "SELECT * FROM part_requests WHERE ticket_no = ? ORDER BY id DESC",
+            "SELECT * FROM part_requests WHERE ticket_no = %s ORDER BY id DESC",
             (ticket["ticket_no"],),
         ).fetchall()
         status_text = {

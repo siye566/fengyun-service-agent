@@ -8,6 +8,22 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: acs_test
+          POSTGRES_USER: acs_test
+          POSTGRES_PASSWORD: ci-only-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U acs_test -d acs_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 12
+    env:
+      ACS_DATABASE_URL: postgresql://acs_test:ci-only-password@127.0.0.1:5432/acs_test
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -16,6 +32,7 @@ jobs:
       - run: python -m pip install -r requirements-dev.txt
       - run: python -m pytest -q
       - run: python evals/run_service_eval.py --output evals/reports/service.json
+      - run: python examples/demo_service.py
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
