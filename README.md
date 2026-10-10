@@ -11,6 +11,10 @@
 
 [快速体验](#快速体验) · [架构与目录](docs/architecture.md) · [能力与源码](docs/implementation-map.md) · [Pi 接入](docs/run-service-mode.md) · [验证记录](docs/validation.md)
 
+[English quickstart](docs/quickstart.en.md) · [受控工具执行与失败实验](docs/runtime-cookbook.en.md)
+
+售后工具执行桥为每次调用启动受控 Python 子进程，传递 Runtime 取消信号、设置执行时限与输出预算，并记录执行状态及进程退出情况；写操作缺少明确回执时返回结果未知，要求先核对原任务再恢复。运行实验复用同一执行器，验证失败运行不覆盖待确认报修及稳定回执去重。该边界是应用层权限与进程执行控制，不是 OS sandbox；不依赖特定沙箱厂商。
+
 ## 仓库结构
 
 ```text

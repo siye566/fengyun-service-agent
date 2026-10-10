@@ -9,6 +9,8 @@
     "dev": "npm run dev --workspace @service-agent/console --",
     "build": "npm run build --workspace @service-agent/console",
     "demo": "node scripts/run-backend.mjs demo",
+    "demo:runtime": "node --experimental-strip-types examples/runtime_lab.mts",
+    "test:runtime": "node --experimental-strip-types --test vendor/miniclaw/tests/acs-execution.node.mts",
     "test": "node scripts/run-backend.mjs test",
     "eval": "node scripts/run-backend.mjs eval",
     "test:ui": "npm run test:e2e --workspace @service-agent/console",

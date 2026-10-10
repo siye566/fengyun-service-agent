@@ -14,7 +14,7 @@
  * 信封契约与 Python 侧一致：{ok:true,data} | {ok:false,error:{code,message,action}}。
  * 工具失败不抛异常——信封原文交给模型，由系统提示词约束它如实转述。
  */
-import { spawn } from 'node:child_process';
+import { executeAcsTool, type AcsEnvelope } from './acs-execution.js';
 import { z } from 'zod';
 import { defineMcpTool, type McpToolDefinition } from './mcp-tool-types.js';
 import type { McpContext } from './mcp-tools.js';
@@ -24,73 +24,25 @@ const ACS_AGENT_PYTHON = process.env.ACS_AGENT_PYTHON || 'python';
 const ACS_AGENT_ROOT = process.env.ACS_AGENT_ROOT || '../../backend';
 const ACS_CALL_TIMEOUT_MS = 30_000;
 
-type AcsEnvelope = {
-  ok: boolean;
-  data?: Record<string, unknown>;
-  error?: { code: string; message: string; action: string };
-};
-
-const failEnvelope = (
-  code: string,
-  message: string,
-  action: string,
-): AcsEnvelope => ({ ok: false, error: { code, message, action } });
-
-function callAcs(
+async function callAcs(
   tool: string,
   args: Record<string, unknown>,
   scope: string,
+  signal?: AbortSignal,
 ): Promise<AcsEnvelope> {
-  return new Promise((resolve) => {
-    const child = spawn(
-      ACS_AGENT_PYTHON,
-      ['-m', 'acs.cli', tool, scope],
-      {
-        env: { ...process.env, PYTHONPATH: ACS_AGENT_ROOT, PYTHONUTF8: '1' },
-        windowsHide: true,
-      },
-    );
-    let out = '';
-    let err = '';
-    const finish = (envelope: AcsEnvelope) => resolve(envelope);
-    const timer = setTimeout(() => {
-      child.kill();
-      finish(failEnvelope('acs_timeout', '工具执行超时（30 秒）', '稍后重试；持续超时则检查 Python 引擎进程'));
-    }, ACS_CALL_TIMEOUT_MS);
-    child.stdout.on('data', (chunk: Buffer) => {
-      out += chunk.toString('utf8');
-    });
-    child.stderr.on('data', (chunk: Buffer) => {
-      err += chunk.toString('utf8');
-    });
-    child.on('error', (e: Error) => {
-      clearTimeout(timer);
-      finish(
-        failEnvelope(
-          'acs_engine_unreachable',
-          `无法启动 Python 工具引擎：${e.message}`,
-          '检查 ACS_AGENT_PYTHON 指向的 venv 解释器是否存在',
-        ),
-      );
-    });
-    child.on('close', () => {
-      clearTimeout(timer);
-      try {
-        const parsed = JSON.parse(out) as AcsEnvelope;
-        finish(parsed);
-      } catch {
-        finish(
-          failEnvelope(
-            'acs_bad_output',
-            `工具引擎返回的不是合法 JSON：${(err || out).slice(0, 200)}`,
-            '查看 runner 日志中 acs.cli 的 stderr',
-          ),
-        );
-      }
-    });
-    child.stdin.write(JSON.stringify(args));
-    child.stdin.end();
+  const { envelope, execution } = await executeAcsTool(tool, args, {
+    python: ACS_AGENT_PYTHON, backendRoot: ACS_AGENT_ROOT, scope,
+    dbPath: process.env.ACS_DB_PATH, signal, timeoutMs: ACS_CALL_TIMEOUT_MS,
   });
+  // Run metadata excludes arguments, scope, raw stderr and business result contents.
+  console.error(`[acs-execution] ${JSON.stringify(execution)}`);
+  return { ...envelope, execution } as AcsEnvelope;
+}
+
+/** The Pi adapter passes cancellation in handler extra, never in model arguments. */
+function executionSignal(extra: unknown): AbortSignal | undefined {
+  const signal = (extra as { signal?: AbortSignal } | undefined)?.signal;
+  return signal && typeof signal.aborted === 'boolean' && typeof signal.addEventListener === 'function' ? signal : undefined;
 }
 
 const render = (envelope: AcsEnvelope) => ({
@@ -122,20 +74,20 @@ export function createAcsTools(ctx: McpContext): McpToolDefinition<any>[] {
             ticket_no: z.string().max(500).optional(),
           }).strict().optional(),
         },
-        async (args) => {
+        async (args, extra) => {
           if (!ctx.serviceTurnText) {
             return render({ ok: false, error: { code: 'input_mismatch', message: '必须使用当前可信用户原文', action: '重新提取当前消息，不可代用户确认' } });
           }
           const result = await callAcs('route_service_turn', {
             parsed: args.parsed, utterance: ctx.serviceTurnText, session_id: ctx.groupFolder,
             event_id: ctx.currentInputTurnId,
-          }, ctx.chatJid);
-          const context = await callAcs('build_service_context', { session_id: ctx.groupFolder }, ctx.chatJid);
+          }, ctx.chatJid, executionSignal(extra));
+          const context = await callAcs('build_service_context', { session_id: ctx.groupFolder }, ctx.chatJid, executionSignal(extra));
           return render({ ...result, service_context: context } as AcsEnvelope);
         },
       ),
       defineMcpTool('build_service_context', '读取可信作用域内的当前任务、设备、历史工单和知识；附分段来源、摘要、哈希和字节预算。', {},
-        async () => render(await callAcs('build_service_context', { session_id: ctx.groupFolder }, ctx.chatJid))),
+        async (_args, extra) => render(await callAcs('build_service_context', { session_id: ctx.groupFolder }, ctx.chatJid, executionSignal(extra)))),
     ];
   }
   return [
@@ -154,7 +106,7 @@ export function createAcsTools(ctx: McpContext): McpToolDefinition<any>[] {
           .optional()
           .describe('紧急度，默认 normal'),
       },
-      async (args) => render(await callAcs('create_repair_ticket', args, ctx.chatJid)),
+      async (args, extra) => render(await callAcs('create_repair_ticket', args, ctx.chatJid, executionSignal(extra))),
     ),
     defineMcpTool(
       'query_maintenance',
@@ -162,7 +114,7 @@ export function createAcsTools(ctx: McpContext): McpToolDefinition<any>[] {
       {
         device_serial: z.string().describe('设备序列号，如 DEMO-GR75-0001'),
       },
-      async (args) => render(await callAcs('query_maintenance', args, ctx.chatJid)),
+      async (args, extra) => render(await callAcs('query_maintenance', args, ctx.chatJid, executionSignal(extra))),
     ),
     defineMcpTool(
       'query_ticket_status',
@@ -170,7 +122,7 @@ export function createAcsTools(ctx: McpContext): McpToolDefinition<any>[] {
       {
         ticket_no: z.string().describe('工单号，ACS- 开头，如 ACS-20260913-001'),
       },
-      async (args) => render(await callAcs('query_ticket_status', args, ctx.chatJid)),
+      async (args, extra) => render(await callAcs('query_ticket_status', args, ctx.chatJid, executionSignal(extra))),
     ),
     defineMcpTool(
       'list_company_tickets',
@@ -178,7 +130,7 @@ export function createAcsTools(ctx: McpContext): McpToolDefinition<any>[] {
       {
         limit: z.number().int().min(1).max(50).optional().describe('返回条数，默认 10'),
       },
-      async (args) => render(await callAcs('list_company_tickets', args, ctx.chatJid)),
+      async (args, extra) => render(await callAcs('list_company_tickets', args, ctx.chatJid, executionSignal(extra))),
     ),
     defineMcpTool(
       'scan_maintenance_due',
@@ -192,7 +144,7 @@ export function createAcsTools(ctx: McpContext): McpToolDefinition<any>[] {
           .optional()
           .describe('提前天数阈值，默认 7 天内到期（含已过期）都会生成保养单'),
       },
-      async (args) => render(await callAcs('scan_maintenance_due', args, ctx.chatJid)),
+      async (args, extra) => render(await callAcs('scan_maintenance_due', args, ctx.chatJid, executionSignal(extra))),
     ),
     defineMcpTool(
       'submit_part_request',
@@ -202,7 +154,7 @@ export function createAcsTools(ctx: McpContext): McpToolDefinition<any>[] {
         part_no: z.string().describe('零件编号，如 P-BRG-6208'),
         quantity: z.number().int().min(1).describe('申领数量'),
       },
-      async (args) => render(await callAcs('submit_part_request', args, ctx.chatJid)),
+      async (args, extra) => render(await callAcs('submit_part_request', args, ctx.chatJid, executionSignal(extra))),
     ),
     defineMcpTool(
       'decide_part_request',
@@ -212,7 +164,7 @@ export function createAcsTools(ctx: McpContext): McpToolDefinition<any>[] {
         decision: z.enum(['approve', 'reject']).describe('审批结论'),
         comment: z.string().optional().describe('审批意见（拒绝时必填理由）'),
       },
-      async (args) => render(await callAcs('decide_part_request', args, ctx.chatJid)),
+      async (args, extra) => render(await callAcs('decide_part_request', args, ctx.chatJid, executionSignal(extra))),
     ),
     defineMcpTool(
       'query_part_requests',
@@ -220,7 +172,7 @@ export function createAcsTools(ctx: McpContext): McpToolDefinition<any>[] {
       {
         ticket_no: z.string().describe('工单号，ACS- 开头'),
       },
-      async (args) => render(await callAcs('query_part_requests', args, ctx.chatJid)),
+      async (args, extra) => render(await callAcs('query_part_requests', args, ctx.chatJid, executionSignal(extra))),
     ),
   ];
 }
