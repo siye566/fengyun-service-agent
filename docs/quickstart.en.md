@@ -57,7 +57,7 @@ With Node 22.18+ and Python 3.10+, run the same helper used by the Pi service br
 
 ```sh
 node --experimental-strip-types examples/runtime_lab.mts
-node --experimental-strip-types --test vendor/miniclaw/tests/acs-execution.test.mts
+node --experimental-strip-types --test vendor/miniclaw/tests/acs-execution.node.mts
 ```
 
 If `python` is not the correct interpreter, set `ACS_AGENT_PYTHON` for the lab and

@@ -1,3 +1,4 @@
+// Standalone Node suite: the .node.mts name keeps it out of Vitest discovery.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, execFileSync, type ChildProcessWithoutNullStreams } from 'node:child_process';

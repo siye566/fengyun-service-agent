@@ -11,7 +11,7 @@ Prerequisites: Node 22.18+ and Python 3.10+. From the repository root:
 ```sh
 python examples/demo_service.py
 node --experimental-strip-types examples/runtime_lab.mts
-node --experimental-strip-types --test vendor/miniclaw/tests/acs-execution.test.mts
+node --experimental-strip-types --test vendor/miniclaw/tests/acs-execution.node.mts
 ```
 
 If needed, set `ACS_AGENT_PYTHON` (lab) or `ACS_TEST_PYTHON` (tests) to your Python

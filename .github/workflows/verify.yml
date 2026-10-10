@@ -26,7 +26,7 @@ jobs:
       - run: npm ci
       - name: Verify controlled tool lifecycle and runtime lab
         run: |
-          node --experimental-strip-types --test vendor/miniclaw/tests/acs-execution.test.mts
+          node --experimental-strip-types --test vendor/miniclaw/tests/acs-execution.node.mts
           node --experimental-strip-types examples/runtime_lab.mts
       - run: npm run build
       - run: npx playwright install --with-deps chromium
