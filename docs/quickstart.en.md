@@ -1,7 +1,7 @@
 # First service workflow, without an API key
 
 This guide runs the real Python workflow against disposable synthetic SQLite data.
-It does **not** start an LLM, send Feishu messages, connect the frontend, or start a sandbox.
+It does **not** start an LLM, send Feishu messages, connect the frontend, or start an OS sandbox.
 
 ## 1. Check your environment
 
@@ -46,12 +46,24 @@ proof of production delivery, dispatch scheduling or field diagnosis accuracy.
 ```text
 Trusted caller binding → session state → candidate intent/entity extraction
                       → program checks → confirmation → transactional ticket tool
-Optional synthetic report snapshot → BoxLite guest → read-only report output
+Tool call → controlled Python worker → result envelope + execution record
 ```
 
-The service database stays on the host. A sandbox limits code execution; caller ownership
-and confirmation gates limit business actions. Neither replaces the other.
-For the separate SDK experiment, continue to the [BoxLite cookbook](boxlite-cookbook.en.md).
+The database retains the business session between worker processes. The execution helper
+controls deadlines, cancellation and output buffering; caller ownership and confirmation
+gates control business actions. Neither is an OS security boundary.
+
+With Node 22.18+ and Python 3.10+, run the same helper used by the Pi service bridge:
+
+```sh
+node --experimental-strip-types examples/runtime_lab.mts
+node --experimental-strip-types --test vendor/miniclaw/tests/acs-execution.test.mts
+```
+
+If `python` is not the correct interpreter, set `ACS_AGENT_PYTHON` for the lab and
+`ACS_TEST_PYTHON` for the tests to its executable path. No npm install or model key is
+required for these commands. Expected lab summary: six checks pass, with ordered Run
+events. See the [runtime failure cookbook](runtime-cookbook.en.md) for boundaries.
 
 ## When you get stuck
 

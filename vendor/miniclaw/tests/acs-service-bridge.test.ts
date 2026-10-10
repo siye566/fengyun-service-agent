@@ -38,6 +38,13 @@ test('trusted host text, mutable scope and stable receipts reach the real Python
   expect(await buildAcsSessionContext(ctx)).toContain('awaiting_confirmation');
   ctx.currentInputTurnId = 'turn-2';
   ctx.serviceTurnText = '确认报修';
+  const controller = new AbortController();
+  controller.abort();
+  const cancelled = JSON.parse((await route.handler({}, { signal: controller.signal })).content[0].text as string);
+  expect(cancelled.error.code).toBe('acs_cancelled');
+  expect(cancelled.execution.cleanup).toBe('not_started');
+  // Cancelled tool transport does not fabricate a completed business transition.
+  expect(await buildAcsSessionContext(ctx)).toContain('awaiting_confirmation');
   const confirmed = await invoke();
   const replayed = await invoke();
   expect(confirmed.data.stage).toBe('completed');

@@ -1,2 +1,0 @@
-# Optional local-runtime demo. Not required by the service workflow or normal CI.
-boxlite==0.10.5
