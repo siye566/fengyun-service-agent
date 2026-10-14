@@ -15,6 +15,8 @@
 *.key
 *.log
 *.jsonl
+**/.cache/
+acs-web-backup.sql
 
 **/test-results/
 **/playwright-report/
