@@ -1,5 +1,6 @@
 name: Verify web deployment
 on:
+  workflow_dispatch:
   push:
     branches: [main]
   pull_request:
@@ -22,10 +23,30 @@ jobs:
           printf 'ACS_POSTGRES_PASSWORD=ci-only-web-password\nACS_WEB_ORIGIN=http://127.0.0.1:8080\nACS_WEB_BIND=127.0.0.1:8080\n' > .env
           docker compose --env-file .env -f deploy/compose.yaml up -d --build --wait --wait-timeout 180
           curl --fail http://127.0.0.1:8080/healthz
+      - name: Export and verify offline installation from saved images
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          mkdir -p .cache/release
+          docker save compressor-service-web:local postgres:17 | gzip -6 > .cache/release/acs-web-linux-amd64.tar.gz
+          docker image inspect --format '{{.RepoTags}} {{.Os}}/{{.Architecture}} {{.Id}}' compressor-service-web:local postgres:17 > .cache/release/images.txt
+          printf 'Source repository: %s\nSource commit: %s\nBuild run: %s/actions/runs/%s\nSources and licenses: Dockerfile, LICENSE, NOTICE.md and upstream image distributions.\n' "$GITHUB_REPOSITORY" "$GITHUB_SHA" "https://github.com/$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" >> .cache/release/images.txt
+          (cd .cache/release && sha256sum acs-web-linux-amd64.tar.gz > SHA256SUMS)
+          docker compose --env-file .env -f deploy/compose.yaml down
+          docker image rm compressor-service-web:local postgres:17
+          (cd .cache/release && sha256sum --check SHA256SUMS)
+          bash scripts/deploy-web.sh .cache/release/acs-web-linux-amd64.tar.gz
+          curl --fail http://127.0.0.1:8080/healthz
       - name: Desktop and mobile against PostgreSQL API
         run: npx playwright test --config apps/service-console/playwright.live.config.ts
       - name: Verify persisted visitor and ticket after container restart
         run: ACS_RESTART_TEST=1 node scripts/verify-web-restart.mjs
+      - uses: actions/upload-artifact@v4
+        if: github.event_name == 'workflow_dispatch'
+        with:
+          name: offline-linux-amd64
+          path: .cache/release/
+          include-hidden-files: true
+          compression-level: 0
       - name: Diagnostics
         if: failure()
         run: docker compose --env-file .env -f deploy/compose.yaml logs --tail 80
@@ -37,3 +58,26 @@ jobs:
       - name: Stop containers
         if: always()
         run: docker compose --env-file .env -f deploy/compose.yaml down
+  publish-offline:
+    if: github.event_name == 'workflow_dispatch'
+    needs: web
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: offline-linux-amd64
+          path: release
+      - name: Publish the validated deployment bundle
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          tag="web-offline-${GITHUB_SHA:0:12}"
+          printf 'Linux amd64 离线部署包，源码版本 %s。\n\n包含本项目 Web 镜像与 Docker 官方 PostgreSQL 17 镜像。已验证导出、删除原镜像、重新导入后禁止联网拉取/构建的实际启动，桌面/手机业务流程与容器重启恢复。运行时仍使用合成访客空间与业务规则。\n\n下载包和 SHA256SUMS，在下载目录校验 sha256sum -c SHA256SUMS，再从更新后的仓库运行 sudo bash scripts/deploy-web.sh <包文件路径>。许可和来源保留在源码及镜像中。\n' "$GITHUB_SHA" > notes.md
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" release/acs-web-linux-amd64.tar.gz release/SHA256SUMS release/images.txt --clobber
+          else
+            gh release create "$tag" --target "$GITHUB_SHA" --title '空压机网页 Linux 离线部署包' --prerelease --notes-file notes.md release/acs-web-linux-amd64.tar.gz release/SHA256SUMS release/images.txt
+          fi

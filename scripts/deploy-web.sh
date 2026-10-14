@@ -8,10 +8,34 @@ if ! docker info >/dev/null 2>&1; then
   exit 1
 fi
 docker compose version >/dev/null
+if (( $# > 1 )); then
+  printf '用法：sudo bash scripts/deploy-web.sh [离线镜像包.tar.gz]\n' >&2
+  exit 1
+fi
 if [[ ! -f .env ]]; then
   password=$(od -An -N24 -tx1 /dev/urandom | tr -d ' \n')
   printf 'ACS_POSTGRES_PASSWORD=%s\nACS_WEB_ORIGIN=http://127.0.0.1:8080\nACS_WEB_BIND=127.0.0.1:8080\n' "$password" > .env
 fi
-docker compose --env-file .env -f deploy/compose.yaml up -d --build --wait --wait-timeout 180
+if (( $# == 1 )); then
+  if [[ $(uname -m) != x86_64 || ! -f $1 ]]; then
+    printf '离线包需要 Linux x86_64 和有效的镜像包文件。\n' >&2
+    exit 1
+  fi
+  if [[ $(basename "$1") != acs-web-linux-amd64.tar.gz ]]; then
+    printf '请保留离线包原始文件名 acs-web-linux-amd64.tar.gz。\n' >&2
+    exit 1
+  fi
+  (cd "$(dirname "$1")" && sha256sum --check SHA256SUMS)
+  docker load --input "$1"
+  for image in compressor-service-web:local postgres:17; do
+    if [[ $(docker image inspect --format '{{.Os}}/{{.Architecture}}' "$image") != linux/amd64 ]]; then
+      printf '镜像架构不匹配：%s\n' "$image" >&2
+      exit 1
+    fi
+  done
+  docker compose --env-file .env -f deploy/compose.yaml up -d --no-build --pull never --wait --wait-timeout 180
+else
+  docker compose --env-file .env -f deploy/compose.yaml up -d --build --wait --wait-timeout 180
+fi
 printf '\n服务启动成功。服务器内验证：curl -f http://127.0.0.1:8080/healthz\n'
 printf '本机预览端口为 8080，公开入口配置见 docs/deployment.md。\n'

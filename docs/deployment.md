@@ -19,6 +19,21 @@ curl -f http://127.0.0.1:8080/healthz
 
 默认只监听服务器自身 `127.0.0.1:8080`，健康检查返回 `status: ok`、`storage: postgresql`。初次安装需下载 Node、Python 和 PostgreSQL 官方镜像；若下载超时，检查镜像仓库网络，保留证书验证。
 
+### Docker Hub 超时时使用离线包
+
+在 [Releases](https://github.com/siye566/fengyun-service-agent/releases) 下载本项目 `Linux 离线部署包` 的 `acs-web-linux-amd64.tar.gz`、`SHA256SUMS` 和 `images.txt`。该包由手动运行的 `Verify web deployment` 工作流生成，只在导出/导入镜像、实际网页流程与重启检查通过后发布。原始 Docker 镜像的许可仍保留，`images.txt` 记录镜像 ID 与源码提交。镜像包不包含运行时 `.env`、访客 Cookie 或 PostgreSQL 数据卷。
+
+在包文件所在目录校验，随后从仓库目录启动（把路径换成下载包实际路径）：
+
+```bash
+sha256sum -c SHA256SUMS
+git pull --ff-only
+sudo bash scripts/deploy-web.sh /完整路径/acs-web-linux-amd64.tar.gz
+curl -f http://127.0.0.1:8080/healthz
+```
+
+离线模式只支持 Linux x86_64，使用 `docker load` 后 `--no-build --pull never` 启动，不再拉取 Docker Hub，也不在服务器下载 npm/Python 依赖。已有 `.env`、数据库卷仍保留。升级离线版本时导入新包；不要用不带包参数的普通构建命令，否则又会访问基础镜像仓库。
+
 自己的电脑可用 SSH 隧道预览（使用阿里云实际登录用户名）：
 
 ```bash
