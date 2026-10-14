@@ -5,6 +5,7 @@
 # 空压机售后智能服务系统
 
 [![持续验证](https://github.com/siye566/fengyun-service-agent/actions/workflows/verify.yml/badge.svg)](https://github.com/siye566/fengyun-service-agent/actions/workflows/verify.yml)
+[![网页部署验证](https://github.com/siye566/fengyun-service-agent/actions/workflows/web-deployment.yml/badge.svg)](https://github.com/siye566/fengyun-service-agent/actions/workflows/web-deployment.yml)
 ![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB)
 ![React](https://img.shields.io/badge/React-TypeScript-3178C6)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-4169E1)
@@ -57,6 +58,19 @@ flowchart LR
 
 ## 售后工作台
 
+**真实网页工作流**：页面核对报修，服务端保留待确认任务；查询进度后仍需明确确认，才会保存 PostgreSQL 工单。下面来自实际 Linux Docker 部署验证，使用独立合成访客数据，未调用模型或飞书。
+
+![网页实际工作流：等待确认、独立查询与 PostgreSQL 后端](docs/screenshots/web-postgresql-confirmation.png)
+
+<details>
+<summary>手机端：确认建单并刷新后读取实际工单</summary>
+
+<img src="docs/screenshots/web-postgresql-mobile-ticket.png" width="320" alt="手机端读取 PostgreSQL 工单" />
+
+</details>
+
+### 原独立前端样例（/service-preview）
+
 **报修确认与待处理任务**：将对话中的设备、故障及待提交动作放在同一工作区，独立查询和挂起报修各自保留。
 
 ![售后工作台：报修信息核对、待确认任务与查询记录](docs/screenshots/repair-confirmation.png)
@@ -88,6 +102,8 @@ flowchart LR
 | 验证层 | 已核验结果 | 证据 |
 | --- | --- | --- |
 | 业务规则回归 | 55 项 Python 测试通过 | [业务回归](backend/tests/test_service.py) · [迁移回归](backend/tests/test_postgres.py) · [验证记录](docs/validation.md) |
+| 网页领域适配 | 4 项真实 PostgreSQL 集成测试通过，总计 59 项 Python 测试 | [网页回归](backend/tests/test_web.py) |
+| 容器化网页 | 桌面/手机 2 项浏览器流程与容器重启恢复通过 | [部署 CI](https://github.com/siye566/fengyun-service-agent/actions/runs/38508222279) · [部署指南](docs/deployment.md) |
 | 离线业务场景 | 16/16 通过，2026-10-10 复验 | [评估集](evals/service_cases.json) · [完整 JSON 报告](docs/verification/service-benchmark.json) |
 | 桌面与移动端交互 | 12 项通过 | [交互测试](apps/service-console/tests/service.spec.ts) |
 | Node → Python 工具桥 | 真实子进程集成通过 | [集成测试](vendor/miniclaw/tests/acs-service-bridge.test.ts) |

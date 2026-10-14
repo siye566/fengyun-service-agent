@@ -9,9 +9,9 @@ npm ci
 npm run dev
 ```
 
-访问 `http://127.0.0.1:5173/`；历史 `/service-preview` 路径也可以访问。`npm run build` 检查 TypeScript 并生成独立产物。
+根路径 `http://127.0.0.1:5173/` 使用真实领域 API，开发时还需启动 Python 后端，见 [部署指南](../../docs/deployment.md)。`/service-preview` 为可独立运行的旧前端样例。`npm run build` 检查 TypeScript 并生成独立产物。
 
-## 业务交互
+## 前端样例交互（/service-preview）
 
 - 复合报修与进度拆为本地任务；只读查询先返回，报修停在设备确认。
 - 设备确认 → 补充故障 → 核对提交；确认前不生成工单。
@@ -22,10 +22,14 @@ npm run dev
 
 ## 数据与接入边界
 
-数据来自合成示例。所有新建和确认只保存在组件内存，刷新重置，不调用真实建单、审批、派单或飞书 API。企业选择只是演示筛选，不是租户鉴权；意图是少量关键词匹配，不是模型推理。
+旧前端样例来自合成数据，新建和确认只保存在组件内存，刷新重置；企业选择只是样例筛选。
 
-真实业务能力在 [backend](../../backend/README.md)，实际 Pi 会话接入见 [运行指南](../../docs/run-service-mode.md)。本界面的任务持久化、生产 API 和模型接入仍需后续集成。
+网页根路径使用服务器分配的独立合成企业与设备，确认后调用领域引擎写入 PostgreSQL；刷新与服务重启保留任务、工单及回执。浏览器不能指定企业作用域或角色。API 使用 HttpOnly Cookie、Origin/CSRF 校验、请求去重与过期清理。当前是业务规则模式，不调用模型、审批、派单或飞书 API。
+
+真实业务能力在 [backend](../../backend/README.md)，网页适配见 [web.py](../../backend/acs/web.py)，实际 Pi 会话接入见 [运行指南](../../docs/run-service-mode.md)。生产客户账号与模型链路仍需独立接入。
 
 ## 交互回归
 
 仓库根目录安装依赖后，执行 `npx playwright install chromium`，再执行 `npm run test:ui`。也可用 `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` 指向本地 Chrome。6 个场景分别在桌面和移动端运行，覆盖确认门禁、复合任务、查询保留报修、人工接手、企业切换、否定输入与重复建单。
+
+真实网页流程使用 `playwright.live.config.ts`，必须先运行 Web + PostgreSQL 部署栈；桌面和手机检查确认、只读查询、刷新与访客隔离。Linux CI 另外验证应用容器重启后的实际工单恢复。

@@ -1,5 +1,20 @@
 # 验证记录
 
+## 2026-10-14：网页领域 API 与 Docker 部署
+
+代码版本 `4f47dad`；使用合成访客空间，不调用模型或飞书。
+
+| 验证 | 实际结果 | 证据 |
+| --- | --- | --- |
+| PostgreSQL Python 回归 | 59 项通过（55 项领域 + 4 项 HTTP 集成） | [业务 CI](https://github.com/siye566/fengyun-service-agent/actions/runs/38508222292) |
+| 原前端样例 | 桌面/手机共 12 项通过 | 同上；本地 Chrome 亦通过 |
+| 实际部署镜像 | Docker 构建并启动 Web + PostgreSQL，健康检查通过 | [容器 CI](https://github.com/siye566/fengyun-service-agent/actions/runs/38508222279) |
+| 网页实际流程 | 桌面/手机 2 项通过：确认前不建单、查询保留报修、刷新恢复、另一访客隔离 | `apps/service-console/tests/live.spec.ts` |
+| 容器重启恢复 | 同一个 Cookie、企业、任务完成状态和实际工单在 Web 重启后恢复 | `scripts/verify-web-restart.mjs` |
+| 构建与工具桥 | TypeScript/Vite、Pi Runner 与原工具桥检查通过 | 业务 CI |
+
+HTTP 回归包括请求去重、不同请求复用事件拒绝、跨访客设备拒绝、Cookie/Origin/CSRF、分块请求大小限制及过期体验空间清理。容器运行设置 Web 512MB / PostgreSQL 384MB 内存上限；没有进行用户阿里云实例容量测试。截图与来源见 [截图说明](screenshots/README.md)。
+
 ## 2026-10-10：PostgreSQL 业务库
 
 真实 PostgreSQL 17.11、Python 3.10、psycopg 3。测试与评估通过独立临时 schema 隔离，没有使用模型或渠道凭证。
@@ -31,6 +46,6 @@
 
 UI 回归使用本地 Chrome；CI 使用 Playwright Chromium。前端 npm 依赖由根目录锁文件固定，通用运行时依赖由各自锁文件固定。
 
-这些检查不覆盖真实模型解析质量、飞书收发、生产部署或财务角色细分。工作台继续使用内存合成数据，尚未接入业务 API。
+上述历史检查不覆盖真实模型解析质量、飞书收发、生产部署或财务角色细分。当时工作台使用内存合成数据；新版根路径领域 API 的验证见本页 2026-10-14 节。
 
 CI 复验业务测试、离线 Benchmark、独立前端构建与交互、Runner 构建和工具桥，并上传评估报告。实际 CI 状态以 [Actions](https://github.com/siye566/fengyun-service-agent/actions/workflows/verify.yml) 为准。

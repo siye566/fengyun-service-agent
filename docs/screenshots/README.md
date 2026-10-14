@@ -1,5 +1,7 @@
 # 截图来源与复现
 
+`web-postgresql-confirmation.png` 和 `web-postgresql-mobile-ticket.png` 来自 2026-10-14 的 [真实 Docker 网页验证](https://github.com/siye566/fengyun-service-agent/actions/runs/38508222279)，代码版本 `4f47dad`。Linux CI 实际启动 PostgreSQL + Python API + 构建后的 React 页面，截图使用访客独立合成空间；没有调用模型或飞书。这些图片证明网页业务流程，不能当作用户阿里云实例上线记录。
+
 工作台截图复验日期：2026-10-08；PostgreSQL 后端运行记录复验日期：2026-10-10。企业、设备及工单均为合成样例，不是客户生产画面。
 
 `backend-postgresql-workflow.png` 来自本次真实 PostgreSQL 运行的 Python stdout，整理为 HTML 后截图，浏览器页面错误为 0。没有修改运行结果；它是执行记录视图，不证明模型、飞书或生产验收。旧 `backend-workflow.png` 为换库前的历史截图，首页已切换到新图。
