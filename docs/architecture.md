@@ -14,14 +14,16 @@
 | Agent SDK | Pi 会话、模型执行与工具调用 | [SDK 适配](../vendor/miniclaw/container/agent-runner/src/runtime/pi/pi-runtime.ts) · [锁定依赖](../vendor/miniclaw/container/agent-runner/package.json) |
 | 业务工具桥 | 可信原文与结构化候选进入 Python | [acs-tools.ts](../vendor/miniclaw/container/agent-runner/src/acs-tools.ts) |
 | 领域引擎与存储 | Python 状态机、权限与 PostgreSQL | [业务路由](../backend/acs/service.py) · [数据库](../backend/acs/db.py) |
-| 独立工作台 | React 合成数据交互，未调用 Pi 或领域 API | [AgentDesk.tsx](../apps/service-console/src/features/service/AgentDesk.tsx) |
+| 网页工作台 | React → HTTP 适配 → 领域引擎 → PostgreSQL；不调用 Pi | [LiveServicePage.tsx](../apps/service-console/src/pages/LiveServicePage.tsx) · [web.py](../backend/acs/web.py) |
+| 前端样例页 | `/service-preview` 保留原内存交互 | [AgentDesk.tsx](../apps/service-console/src/features/service/AgentDesk.tsx) |
 
 ## 模块关系
 
 ```mermaid
 flowchart TB
     subgraph Product[售后业务模块]
-      UI[apps/service-console · 内存交互演示]
+      UI[apps/service-console · 网页工作台]
+      API[acs.web · Cookie / CSRF / 合成企业作用域]
       EX[examples · Python 实际运行演示]
       WF[backend/acs/service.py · 状态路由]
       ID[identity.py · 企业与设备归属]
@@ -40,7 +42,7 @@ flowchart TB
     RT[vendor · 可选 Host 运行时] --> PI[Pi SDK · createAgentSession]
     PI --> BR[acs-tools.ts · 可信消息与 Python 桥]
     BR --> WF
-    UI -. 后续接入：当前未连后端 .-> WF
+    UI --> API --> WF
 ```
 
 建议先读以下业务入口：
@@ -52,6 +54,6 @@ flowchart TB
 5. [工作台](../apps/service-console/src/features/service/AgentDesk.tsx)：演示任务、设备确认、独立查询和人工接手。
 6. [测试](../backend/tests/test_service.py) 与 [评估集](../evals/service_cases.json)：能力主张对应可运行的失败路径。
 
-`apps/service-console` 不加载通用 Host、登录、账单、终端和渠道依赖。其合成数据仅保存在组件内存，不提供生产租户鉴权。真实模型链路仍由 [Pi 接入](run-service-mode.md) 执行。
+`apps/service-console` 不加载通用 Host、账单、终端和渠道依赖。网页根路径使用服务端分配的合成企业体验会话，不提供生产客户账号鉴权；`/service-preview` 的旧样例仍保存在组件内存。真实模型链路由 [Pi 接入](run-service-mode.md) 执行。部署步骤见 [Linux 部署](deployment.md)。
 
 通用运行时、Pi 及第三方库的来源和许可见 [NOTICE](../NOTICE.md)。

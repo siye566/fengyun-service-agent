@@ -1,0 +1,42 @@
+name: compressor-service-web
+services:
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: acs_web
+      POSTGRES_USER: acs_web
+      POSTGRES_PASSWORD: ${ACS_POSTGRES_PASSWORD:?Run scripts/deploy-web.sh first}
+    # Database remains on the container network; no host/public database port.
+    volumes:
+      - web-postgres:/var/lib/postgresql/data
+    command: ["postgres", "-c", "shared_buffers=64MB", "-c", "max_connections=30", "-c", "work_mem=2MB"]
+    mem_limit: 384m
+    cpus: 0.75
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U acs_web -d acs_web"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    logging: { driver: json-file, options: { max-size: "10m", max-file: "3" } }
+  web:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres: { condition: service_healthy }
+    environment:
+      ACS_DATABASE_URL: postgresql://acs_web:${ACS_POSTGRES_PASSWORD}@postgres:5432/acs_web
+      ACS_WEB_ORIGIN: ${ACS_WEB_ORIGIN:-http://127.0.0.1:8080}
+    ports:
+      - "${ACS_WEB_BIND:-127.0.0.1:8080}:8080"
+    mem_limit: 512m
+    cpus: 1.0
+    read_only: true
+    tmpfs: ["/tmp:size=32m,mode=1777"]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    logging: { driver: json-file, options: { max-size: "10m", max-file: "3" } }
+volumes:
+  web-postgres:

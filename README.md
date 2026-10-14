@@ -26,7 +26,7 @@
 | 上下文装配 | 六段上下文、来源/摘要/哈希审计、预算告警与阻断 | [上下文服务](backend/acs/context.py) |
 | 售后工作台 | 会话、任务卡片、工单、台账和保养计划 | [独立 React 应用](apps/service-console/README.md) |
 
-公开版本使用示例企业、DEMO 设备与合成工单。领域引擎可真实读写 PostgreSQL；工作台当前为合成数据模式，尚未连接领域 API。Agent 执行层使用 Pi SDK（`@earendil-works/pi-coding-agent@0.84.2`），Host 管理会话与渠道，通过 [工具桥](docs/run-service-mode.md) 调用 Python 领域引擎。[数据库配置](docs/database.md)
+公开版本使用示例企业、DEMO 设备与合成工单。网页版根路径连接真实 PostgreSQL 领域 API，每位访客使用独立合成体验空间；`/service-preview` 保留原前端样例。网页默认使用业务规则，不调用模型或飞书。Agent 执行层另有 Pi SDK（`@earendil-works/pi-coding-agent@0.84.2`）接入，Host 管理会话与渠道，通过 [工具桥](docs/run-service-mode.md) 调用 Python 领域引擎。[数据库配置](docs/database.md) · [Linux / 阿里云部署](docs/deployment.md)
 
 ## 业务流程
 
@@ -97,6 +97,17 @@ flowchart LR
 
 ## 快速体验
 
+### 网页版部署（Docker + PostgreSQL）
+
+```bash
+git clone https://github.com/siye566/fengyun-service-agent.git
+cd fengyun-service-agent
+sudo bash scripts/deploy-web.sh
+curl -f http://127.0.0.1:8080/healthz
+```
+
+需要已安装 Docker Engine 和 Compose。默认绑定服务器本机端口，每位访客使用独立合成设备。浏览器核对报修、确认建单、查进度与保养，刷新及服务重启保留状态。公开域名、HTTPS、备案与更新步骤见 [部署说明](docs/deployment.md)。
+
 ### 售后工作台
 
 需要 Node.js 20+。从根目录安装和启动，前端无需模型密钥或通用运行时依赖。
@@ -108,7 +119,7 @@ npm ci
 npm run dev
 ```
 
-打开 `http://127.0.0.1:5173/`。当前工作台为合成数据模式，刷新后恢复初始数据；`npm run build` 检查类型并生成独立产物。
+打开 `http://127.0.0.1:5173/service-preview` 查看独立前端样例，刷新后恢复样例数据；`npm run build` 检查类型并生成产物。根路径 `/` 为真实后端工作台，本地开发还需按 [部署说明](docs/deployment.md) 启动 Python API。
 
 ### 业务引擎与评估
 
@@ -149,6 +160,6 @@ vendor/                 通用运行时及工具桥集成
 
 已实现：领域工具、企业作用域、受控报修、状态持久化、去重恢复、上下文预算、独立工作台及自动回归。
 
-待接入：工作台业务 API、细分内部角色、自动提醒/派单，以及真实模型和渠道端到端验收。上下文预算以 UTF-8 bytes 计量。公开版本不附生产上线、经营收益或模型准确率主张；后续计划见 [交付范围](docs/roadmap.md)。
+已补齐网页领域 API、访客合成企业隔离、工单/任务持久化、CSRF/Origin 校验、重试去重及 Docker 部署配置。待接入：细分内部角色、自动提醒/派单，以及真实模型和渠道端到端验收。上下文预算以 UTF-8 bytes 计量。公开版本不附生产上线、经营收益或模型准确率主张；后续计划见 [交付范围](docs/roadmap.md)。
 
 公开数据经过脱敏或合成处理，不包含客户材料、凭证、生产数据库或会话日志。代码来源和改动范围见 [NOTICE](NOTICE.md)，许可全文见 [LICENSE](LICENSE)。

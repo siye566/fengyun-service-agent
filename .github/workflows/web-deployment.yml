@@ -1,0 +1,39 @@
+name: Verify web deployment
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Build and boot actual deployment stack
+        run: |
+          printf 'ACS_POSTGRES_PASSWORD=ci-only-web-password\nACS_WEB_ORIGIN=http://127.0.0.1:8080\nACS_WEB_BIND=127.0.0.1:8080\n' > .env
+          docker compose --env-file .env -f deploy/compose.yaml up -d --build --wait --wait-timeout 180
+          curl --fail http://127.0.0.1:8080/healthz
+      - name: Desktop and mobile against PostgreSQL API
+        run: npx playwright test --config apps/service-console/playwright.live.config.ts
+      - name: Verify persisted visitor and ticket after container restart
+        run: ACS_RESTART_TEST=1 node scripts/verify-web-restart.mjs
+      - name: Diagnostics
+        if: failure()
+        run: docker compose --env-file .env -f deploy/compose.yaml logs --tail 80
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: web-browser-results
+          path: test-results/
+      - name: Stop containers
+        if: always()
+        run: docker compose --env-file .env -f deploy/compose.yaml down

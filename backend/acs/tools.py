@@ -148,9 +148,11 @@ def create_repair_ticket(
             kb_id = None
 
         today = date.today().isoformat()
+        # Expired synthetic workspaces may remove rows. Count-based numbering
+        # would then collide with surviving tickets; use the largest suffix.
         seq = conn.execute(
-            "SELECT COUNT(*) AS n FROM tickets WHERE created_at LIKE %s",
-            (f"{today}%",),
+            "SELECT COALESCE(MAX(split_part(ticket_no, '-', 3)::BIGINT), 0) AS n FROM tickets WHERE ticket_no ~ %s",
+            (f"^ACS-{today.replace('-', '')}-[0-9]+$",),
         ).fetchone()["n"]
         ticket_no = f"ACS-{today.replace('-', '')}-{seq + 1:03d}"
         conn.execute(
