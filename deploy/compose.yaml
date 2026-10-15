@@ -31,6 +31,8 @@ services:
     environment:
       ACS_DATABASE_URL: postgresql://acs_web:${ACS_POSTGRES_PASSWORD}@postgres:5432/acs_web
       ACS_WEB_ORIGIN: ${ACS_WEB_ORIGIN:-http://127.0.0.1:8080}
+      ACS_ADMIN_PASSWORD: ${ACS_ADMIN_PASSWORD:-}
+      ACS_CHANNEL_KEY: ${ACS_CHANNEL_KEY:-}
     ports:
       - "${ACS_WEB_BIND:-127.0.0.1:8080}:8080"
     mem_limit: 512m

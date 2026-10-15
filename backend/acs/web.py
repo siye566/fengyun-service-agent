@@ -1,9 +1,11 @@
-"""Browser adapter for the real domain engine; anonymous synthetic workspaces only.
+"""HTTP adapter for the domain engine, admin console and Feishu management.
 
 Opaque HttpOnly cookies resolve to server-owned company bindings. Neither role,
-scope nor model candidates are accepted from a browser. No external LLM is used.
+scope nor model candidates are accepted from a customer browser. Admin cookies
+are authenticated separately. No external LLM is used.
 """
 import hashlib
+import asyncio
 import json
 import logging
 import os
@@ -17,6 +19,7 @@ from urllib.parse import urlsplit
 
 import psycopg
 from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field
@@ -26,6 +29,7 @@ from .db import begin_write, connect
 from .seed import seed
 from .service import load_state, route_service_turn, trusted_session_key
 from .tools import STATUS_TEXT, query_maintenance
+from . import admin, feishu_channel
 
 COOKIE = "acs_visitor"
 TTL = 86400
@@ -157,7 +161,7 @@ def snapshot(row, token):
                          "created_at": h["created_at"].isoformat()} for h in reversed(history)]}
 
 
-def create_app(origin=None, static_dir=None):
+def create_app(origin=None, static_dir=None, start_connector=True):
     origin = (origin or os.getenv("ACS_WEB_ORIGIN", "http://127.0.0.1:8080")).rstrip("/")
     parsed_origin = urlsplit(origin)
     if parsed_origin.scheme not in ("http", "https") or not parsed_origin.hostname or parsed_origin.path:
@@ -168,7 +172,18 @@ def create_app(origin=None, static_dir=None):
         seed()  # Idempotent, never seed(reset=True).
         with connect() as conn:
             conn.execute(WEB_SCHEMA)
-        yield
+            conn.execute(admin.SCHEMA)
+            conn.execute(feishu_channel.SCHEMA)
+        connector = asyncio.create_task(feishu_channel.supervise()) if start_connector else None
+        try:
+            yield
+        finally:
+            if connector:
+                connector.cancel()
+                try:
+                    await connector
+                except asyncio.CancelledError:
+                    pass
 
     api = FastAPI(lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
     api.add_middleware(TrustedHostMiddleware, allowed_hosts=[parsed_origin.hostname, "localhost", "127.0.0.1", "testserver"])
@@ -206,6 +221,11 @@ def create_app(origin=None, static_dir=None):
     async def database_error(_, exc):
         logging.warning("Database unavailable (%s)", type(exc).__name__)
         return JSONResponse({"detail": "数据库暂不可用，请稍后重试"}, status_code=503)
+
+    @api.exception_handler(RequestValidationError)
+    async def validation_error(_, exc):
+        # Validation errors must not echo submitted passwords or app secrets.
+        return JSONResponse({"detail": "输入未通过校验，请检查字段格式与长度"}, status_code=422)
 
     @api.get("/healthz")
     def health():
@@ -264,8 +284,10 @@ def create_app(origin=None, static_dir=None):
                          (json.dumps(result, ensure_ascii=False), row["token_hash"], body.event_id))
         return {"result": result, "snapshot": snapshot(row, token)}
 
+    admin.attach_routes(api, secure=parsed_origin.scheme == "https")
     directory = Path(static_dir or os.getenv("ACS_STATIC_DIR", "apps/service-console/dist"))
     if directory.is_dir():
+        @api.get("/experience")
         @api.get("/service-preview")
         def preview():
             return FileResponse(directory / "index.html")

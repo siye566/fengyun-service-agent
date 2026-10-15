@@ -20,7 +20,7 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - name: Build and boot actual deployment stack
         run: |
-          printf 'ACS_POSTGRES_PASSWORD=ci-only-web-password\nACS_WEB_ORIGIN=http://127.0.0.1:8080\nACS_WEB_BIND=127.0.0.1:8080\n' > .env
+          printf 'ACS_POSTGRES_PASSWORD=ci-only-web-password\nACS_WEB_ORIGIN=http://127.0.0.1:8080\nACS_WEB_BIND=127.0.0.1:8080\nACS_ADMIN_PASSWORD=ci-only-admin-password-long-enough\nACS_CHANNEL_KEY=abababababababababababababababababababababababababababababababab\n' > .env
           docker compose --env-file .env -f deploy/compose.yaml up -d --build --wait --wait-timeout 180
           curl --fail http://127.0.0.1:8080/healthz
       - name: Export and verify offline installation from saved images
@@ -37,6 +37,8 @@ jobs:
           bash scripts/deploy-web.sh .cache/release/acs-web-linux-amd64.tar.gz
           curl --fail http://127.0.0.1:8080/healthz
       - name: Desktop and mobile against PostgreSQL API
+        env:
+          ACS_ADMIN_TEST_PASSWORD: ci-only-admin-password-long-enough
         run: npx playwright test --config apps/service-console/playwright.live.config.ts
       - name: Verify persisted visitor and ticket after container restart
         run: ACS_RESTART_TEST=1 node scripts/verify-web-restart.mjs

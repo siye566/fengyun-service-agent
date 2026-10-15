@@ -16,6 +16,14 @@ if [[ ! -f .env ]]; then
   password=$(od -An -N24 -tx1 /dev/urandom | tr -d ' \n')
   printf 'ACS_POSTGRES_PASSWORD=%s\nACS_WEB_ORIGIN=http://127.0.0.1:8080\nACS_WEB_BIND=127.0.0.1:8080\n' "$password" > .env
 fi
+# Add missing settings when upgrading, keeping existing database credentials.
+if ! grep -q '^ACS_ADMIN_PASSWORD=.' .env; then
+  printf '\nACS_ADMIN_PASSWORD=%s\n' "$(od -An -N24 -tx1 /dev/urandom | tr -d ' \n')" >> .env
+fi
+if ! grep -q '^ACS_CHANNEL_KEY=.' .env; then
+  printf '\nACS_CHANNEL_KEY=%s\n' "$(od -An -N32 -tx1 /dev/urandom | tr -d ' \n')" >> .env
+fi
+chmod 600 .env
 if (( $# == 1 )); then
   if [[ $(uname -m) != x86_64 || ! -f $1 ]]; then
     printf '离线包需要 Linux x86_64 和有效的镜像包文件。\n' >&2
@@ -39,3 +47,4 @@ else
 fi
 printf '\n服务启动成功。服务器内验证：curl -f http://127.0.0.1:8080/healthz\n'
 printf '本机预览端口为 8080，公开入口配置见 docs/deployment.md。\n'
+printf '首页为管理员工作台；在服务器用 sudo grep ^ACS_ADMIN_PASSWORD= .env 查看登录密码，请勿公开。\n'

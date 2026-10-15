@@ -1,6 +1,6 @@
 # 架构与源码阅读顺序
 
-本项目将产品界面、领域引擎、评估样例与可选运行时分开。工作台独立构建，业务引擎独立测试；只有模型/渠道接入依赖通用运行时。
+本项目将产品界面、领域引擎、评估样例与可选运行时分开。工作台独立构建，业务引擎独立测试。独立 Docker 部署包含管理员 API 和官方 Python SDK 飞书长连接；Pi 模型链路仍在可选 Host 运行时中。
 
 [关键工程设计](engineering-decisions.md) · [验证结果](verification/README.md) · [交付范围](roadmap.md)
 
@@ -54,6 +54,6 @@ flowchart TB
 5. [工作台](../apps/service-console/src/features/service/AgentDesk.tsx)：演示任务、设备确认、独立查询和人工接手。
 6. [测试](../backend/tests/test_service.py) 与 [评估集](../evals/service_cases.json)：能力主张对应可运行的失败路径。
 
-`apps/service-console` 不加载通用 Host、账单、终端和渠道依赖。网页根路径使用服务端分配的合成企业体验会话，不提供生产客户账号鉴权；`/service-preview` 的旧样例仍保存在组件内存。真实模型链路由 [Pi 接入](run-service-mode.md) 执行。部署步骤见 [Linux 部署](deployment.md)。
+`apps/service-console` 不加载通用 Host、账单或终端。网页根路径是独立鉴权的管理员工作台，`admin.py` 提供跨企业只读查询和受控身份绑定；`feishu_channel.py` 保存加密凭证、收件箱及回执，`feishu_worker.py` 在独立子进程使用官方 SDK 接收私聊。消息从可信应用/用户标识映射企业身份，复用领域确认和幂等边界。`/experience` 保留合成企业体验，`/service-preview` 保留内存样例。[飞书与管理员说明](feishu-admin.md) · [Pi 接入](run-service-mode.md) · [Linux 部署](deployment.md)。
 
 通用运行时、Pi 及第三方库的来源和许可见 [NOTICE](../NOTICE.md)。

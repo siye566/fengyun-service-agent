@@ -1,6 +1,6 @@
 # 独立售后工作台
 
-本应用包含售后 Agent 对话、待处理任务、设备/故障确认、工单、台账、保养和处理记录。它可独立构建和运行，不依赖通用 Host、登录、账单、终端或渠道服务。
+本应用首页是需要登录的售后管理员工作台，提供客户会话、全企业工单、设备台账及飞书接入配置。独立 Python 后端负责管理员鉴权、企业绑定、官方 SDK 飞书长连接与 PostgreSQL，不依赖通用 Host。
 
 从仓库根目录执行：
 
@@ -9,7 +9,7 @@ npm ci
 npm run dev
 ```
 
-根路径 `http://127.0.0.1:5173/` 使用真实领域 API，开发时还需启动 Python 后端，见 [部署指南](../../docs/deployment.md)。`/service-preview` 为可独立运行的旧前端样例。`npm run build` 检查 TypeScript 并生成独立产物。
+根路径 `http://127.0.0.1:5173/` 是管理员入口，开发时还需启动 Python 后端并设置管理员密码与渠道加密密钥，见 [部署指南](../../docs/deployment.md)。`/experience` 是网页报修体验；`/service-preview` 为可独立运行的旧前端样例。`npm run build` 检查 TypeScript 并生成独立产物。
 
 ## 前端样例交互（/service-preview）
 
@@ -24,7 +24,7 @@ npm run dev
 
 旧前端样例来自合成数据，新建和确认只保存在组件内存，刷新重置；企业选择只是样例筛选。
 
-网页根路径使用服务器分配的独立合成企业与设备，确认后调用领域引擎写入 PostgreSQL；刷新与服务重启保留任务、工单及回执。浏览器不能指定企业作用域或角色。API 使用 HttpOnly Cookie、Origin/CSRF 校验、请求去重与过期清理。当前是业务规则模式，不调用模型、审批、派单或飞书 API。
+管理员使用独立 HttpOnly Cookie 登录，能查看各客户会话和工单；客户 Cookie 不授予管理权限。飞书配置仅允许管理员修改，密钥不会返回浏览器；接收由官方 SDK 子进程执行，客户企业身份由管理员绑定。`/experience` 使用独立合成企业与设备，确认后写入 PostgreSQL；API 保留 Origin/CSRF、去重和过期清理。当前默认业务规则处理，未接入模型、审批或派单。详见 [飞书与管理台](../../docs/feishu-admin.md)。
 
 真实业务能力在 [backend](../../backend/README.md)，网页适配见 [web.py](../../backend/acs/web.py)，实际 Pi 会话接入见 [运行指南](../../docs/run-service-mode.md)。生产客户账号与模型链路仍需独立接入。
 

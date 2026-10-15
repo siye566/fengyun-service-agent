@@ -27,7 +27,7 @@
 | 上下文装配 | 六段上下文、来源/摘要/哈希审计、预算告警与阻断 | [上下文服务](backend/acs/context.py) |
 | 售后工作台 | 会话、任务卡片、工单、台账和保养计划 | [独立 React 应用](apps/service-console/README.md) |
 
-公开版本使用示例企业、DEMO 设备与合成工单。网页版根路径连接真实 PostgreSQL 领域 API，每位访客使用独立合成体验空间；`/service-preview` 保留原前端样例。网页默认使用业务规则，不调用模型或飞书。Agent 执行层另有 Pi SDK（`@earendil-works/pi-coding-agent@0.84.2`）接入，Host 管理会话与渠道，通过 [工具桥](docs/run-service-mode.md) 调用 Python 领域引擎。[数据库配置](docs/database.md) · [Linux / 阿里云部署](docs/deployment.md)
+公开版本使用示例企业、DEMO 设备与合成工单。**客户在飞书报修，网页首页是售后管理员工作台**：登录后查看各客户会话、全企业工单和设备，并配置飞书机器人及客户企业身份。独立部署通过官方 Python SDK 长连接接收私聊文本，按用户可信身份调用 PostgreSQL 领域引擎；未配置应用时不会自动连接飞书。`/experience` 保留独立合成企业的网页报修体验，`/service-preview` 保留原前端样例。默认业务规则模式；可选 Pi SDK 模型链路见 [工具桥](docs/run-service-mode.md)。[飞书与管理台](docs/feishu-admin.md) · [数据库配置](docs/database.md) · [Linux / 阿里云部署](docs/deployment.md)
 
 ## 业务流程
 
@@ -58,7 +58,9 @@ flowchart LR
 
 ## 售后工作台
 
-**真实网页工作流**：页面核对报修，服务端保留待确认任务；查询进度后仍需明确确认，才会保存 PostgreSQL 工单。下面来自实际 Linux Docker 部署验证，使用独立合成访客数据，未调用模型或飞书。
+首页提供管理员会话中心与飞书接入页，应用凭证加密保存在服务器，客户身份由管理员绑定。客户的飞书消息和系统回复按会话持久化，工单仍需客户明确确认后创建。接入步骤与验收范围见 [管理台说明](docs/feishu-admin.md)。
+
+**网页客户体验（`/experience`）**：页面核对报修，服务端保留待确认任务；查询进度后仍需明确确认，才会保存 PostgreSQL 工单。下面是该客户体验入口的实际 Linux Docker 验证截图，使用合成访客，未调用模型或飞书。
 
 ![网页实际工作流：等待确认、独立查询与 PostgreSQL 后端](docs/screenshots/web-postgresql-confirmation.png)
 

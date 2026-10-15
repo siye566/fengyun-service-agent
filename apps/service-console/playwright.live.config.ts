@@ -1,7 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 export default defineConfig({
   testDir: "./tests",
-  testMatch: "live.spec.ts",
+  testMatch: ["live.spec.ts", "admin.live.spec.ts"],
   workers: 1,
   reporter: "line",
   use: {

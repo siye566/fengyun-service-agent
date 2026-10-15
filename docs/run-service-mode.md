@@ -12,6 +12,6 @@ Host 子进程继承以上环境变量。每次 Pi 会话调用先获取售后�
 
 首次报修返回设备、故障和确认提示；下一轮用户明确回复“确认报修”才建单。独立进度查询返回后原报修继续等待；取消使用“取消报修”。确认采用白名单，不声明自然语言确认覆盖率。
 
-售后工作台位于 `apps/service-console`。根路径使用网页领域 API 与 PostgreSQL（见 [网页部署](deployment.md)），默认业务规则模式，不调用 Pi。`/service-preview` 保留原内存合成数据样例。下面说明可选的 Host/Pi 模型与渠道链路；通用管理台默认进入 `/chat`。
+售后工作台位于 `apps/service-console`。根路径是管理员工作台，独立部署也提供官方 Python SDK 飞书长连接（见 [飞书接入](feishu-admin.md)）；`/experience` 使用网页领域 API 与 PostgreSQL，默认业务规则模式，不调用 Pi。`/service-preview` 保留原内存合成数据样例。本页说明另一条可选 Host/Pi 模型与渠道链路；通用管理台默认进入 `/chat`，历史会话不自动合并到独立工作台。
 
 业务数据存放在 PostgreSQL；本地 `.env`、会话、日志与凭证均不提交到 Git。第三方代码来源与许可见 [NOTICE](../NOTICE.md)。
