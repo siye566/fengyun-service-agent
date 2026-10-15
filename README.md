@@ -60,6 +60,12 @@ flowchart LR
 
 首页提供管理员会话中心与飞书接入页，应用凭证加密保存在服务器，客户身份由管理员绑定。客户的飞书消息和系统回复按会话持久化，工单仍需客户明确确认后创建。接入步骤与验收范围见 [管理台说明](docs/feishu-admin.md)。
 
+![管理员会话中心：查看不同客户的消息与待确认报修](docs/screenshots/admin-conversations.png)
+
+![飞书接入：配置应用凭证、长连接与企业绑定流程](docs/screenshots/admin-feishu-settings.png)
+
+以上为实际 Docker 页面截图，显示合成网页客户记录和未配置的飞书接入状态；没有伪造真实飞书聊天记录。
+
 **网页客户体验（`/experience`）**：页面核对报修，服务端保留待确认任务；查询进度后仍需明确确认，才会保存 PostgreSQL 工单。下面是该客户体验入口的实际 Linux Docker 验证截图，使用合成访客，未调用模型或飞书。
 
 ![网页实际工作流：等待确认、独立查询与 PostgreSQL 后端](docs/screenshots/web-postgresql-confirmation.png)
@@ -104,8 +110,8 @@ flowchart LR
 | 验证层 | 已核验结果 | 证据 |
 | --- | --- | --- |
 | 业务规则回归 | 55 项 Python 测试通过 | [业务回归](backend/tests/test_service.py) · [迁移回归](backend/tests/test_postgres.py) · [验证记录](docs/validation.md) |
-| 网页领域适配 | 4 项真实 PostgreSQL 集成测试通过，总计 59 项 Python 测试 | [网页回归](backend/tests/test_web.py) |
-| 容器化网页 | 桌面/手机 2 项浏览器流程与容器重启恢复通过 | [部署 CI](https://github.com/siye566/fengyun-service-agent/actions/runs/38508222279) · [部署指南](docs/deployment.md) |
+| HTTP 与管理台 | 65 项 Python 测试通过，含管理员边界、加密配置、飞书收件箱/投递及原领域回归 | [管理台回归](backend/tests/test_admin.py) · [业务 CI](https://github.com/siye566/fengyun-service-agent/actions/runs/38687277148) |
+| 容器化网页 | 客户体验与管理员桌面/手机共 4 项浏览器流程、容器重启恢复通过 | [部署 CI](https://github.com/siye566/fengyun-service-agent/actions/runs/38687277124) · [部署指南](docs/deployment.md) |
 | 离线业务场景 | 16/16 通过，2026-10-10 复验 | [评估集](evals/service_cases.json) · [完整 JSON 报告](docs/verification/service-benchmark.json) |
 | 桌面与移动端交互 | 12 项通过 | [交互测试](apps/service-console/tests/service.spec.ts) |
 | Node → Python 工具桥 | 真实子进程集成通过 | [集成测试](vendor/miniclaw/tests/acs-service-bridge.test.ts) |

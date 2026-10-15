@@ -34,6 +34,8 @@ curl -f http://127.0.0.1:8080/healthz
 
 离线模式只支持 Linux x86_64，使用 `docker load` 后 `--no-build --pull never` 启动，不再拉取 Docker Hub，也不在服务器下载 npm/Python 依赖。已有 `.env`、数据库卷仍保留。升级离线版本时导入新包；不要用不带包参数的普通构建命令，否则又会访问基础镜像仓库。
 
+已安装 PostgreSQL 17 的服务器可只下载 `acs-web-update-linux-amd64.tar.gz` 和 `SHA256SUMS-update`，放在同一目录，执行 `sudo bash scripts/deploy-web.sh /完整路径/acs-web-update-linux-amd64.tar.gz`。升级包只包含 Web 镜像，避免重复下载 PostgreSQL；不存在 `postgres:17` 时脚本拒绝并提示使用完整包。不同版本放在各自的新目录，避免把旧文件误当成新版本续传。
+
 自己的电脑可用 SSH 隧道预览（使用阿里云实际登录用户名）：
 
 ```bash

@@ -1,5 +1,13 @@
 # 验证记录
 
+## 2026-10-15：管理员工作台与独立飞书适配
+
+代码版本 `fe68da3`。[业务 CI](https://github.com/siye566/fengyun-service-agent/actions/runs/38687277148) 的 65 项 Python 测试、16 个领域场景、12 项原前端回归及 Pi 工具桥均通过。[容器 CI](https://github.com/siye566/fengyun-service-agent/actions/runs/38687277124) 实际启动 PostgreSQL + Web，管理员与客户桌面/手机共 4 项浏览器测试及原容器重启恢复通过。
+
+新增 6 项 PostgreSQL 测试覆盖管理员登录/退出/过期/密码变更、客户 Cookie 不能读取管理 API、跨客户会话读取、Secret 加密与不回传、企业绑定/变更、飞书入站持久化、重复事件/确认幂等、发送失败恢复和官方 SDK 构建器接口。凭证检查与发送网络边界使用替代函数，未使用真实应用凭证；不代表已完成真实飞书收发验收。
+
+管理员页面截图及来源见 [截图说明](screenshots/README.md)。
+
 ## 2026-10-14：网页领域 API 与 Docker 部署
 
 代码版本 `4f47dad`；使用合成访客空间，不调用模型或飞书。

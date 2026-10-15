@@ -1,5 +1,7 @@
 # 截图来源与复现
 
+`admin-conversations.png` 和 `admin-feishu-settings.png` 来自 2026-10-15 的 [真实 Docker 管理台验证](https://github.com/siye566/fengyun-service-agent/actions/runs/38687277124)，代码版本 `fe68da3`。测试从独立客户浏览器发起报修，再以管理员登录查看该合成企业会话和待确认任务，并打开飞书接入配置。图片明确显示网页客户来源、飞书尚未配置，没有真实飞书凭证或消息。桌面/移动端合计 4 项实际部署浏览器用例通过。
+
 `web-postgresql-confirmation.png` 和 `web-postgresql-mobile-ticket.png` 来自 2026-10-14 的 [真实 Docker 网页验证](https://github.com/siye566/fengyun-service-agent/actions/runs/38508222279)，代码版本 `4f47dad`。Linux CI 实际启动 PostgreSQL + Python API + 构建后的 React 页面，截图使用访客独立合成空间；没有调用模型或飞书。这些图片证明网页业务流程，不能当作用户阿里云实例上线记录。
 
 工作台截图复验日期：2026-10-08；PostgreSQL 后端运行记录复验日期：2026-10-10。企业、设备及工单均为合成样例，不是客户生产画面。

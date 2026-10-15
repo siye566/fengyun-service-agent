@@ -29,11 +29,18 @@ if (( $# == 1 )); then
     printf '离线包需要 Linux x86_64 和有效的镜像包文件。\n' >&2
     exit 1
   fi
-  if [[ $(basename "$1") != acs-web-linux-amd64.tar.gz ]]; then
-    printf '请保留离线包原始文件名 acs-web-linux-amd64.tar.gz。\n' >&2
-    exit 1
-  fi
-  (cd "$(dirname "$1")" && sha256sum --check SHA256SUMS)
+  case $(basename "$1") in
+    acs-web-linux-amd64.tar.gz) checksum=SHA256SUMS ;;
+    acs-web-update-linux-amd64.tar.gz)
+      checksum=SHA256SUMS-update
+      if ! docker image inspect postgres:17 >/dev/null 2>&1; then
+        printf '升级包需要服务器已有 postgres:17 镜像；首次安装请使用完整包。\n' >&2
+        exit 1
+      fi
+      ;;
+    *) printf '请保留离线完整包或升级包的原始文件名。\n' >&2; exit 1 ;;
+  esac
+  (cd "$(dirname "$1")" && sha256sum --check "$checksum")
   docker load --input "$1"
   for image in compressor-service-web:local postgres:17; do
     if [[ $(docker image inspect --format '{{.Os}}/{{.Architecture}}' "$image") != linux/amd64 ]]; then
