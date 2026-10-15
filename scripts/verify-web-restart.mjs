@@ -30,7 +30,7 @@ const configResponse = await fetch(`${origin}/api/admin/feishu`, {
     "X-CSRF-Token": adminSession.csrf,
   },
   body: JSON.stringify({
-    app_id: "cli_ci_restart",
+    app_id: "cli_cirestart",
     app_secret: "ci-only-disabled-connector",
     enabled: false,
   }),
@@ -104,7 +104,7 @@ const restoredConfig = await (
     headers: { Cookie: adminCookie },
   })
 ).json();
-assert.equal(restoredConfig.app_id, "cli_ci_restart");
+assert.equal(restoredConfig.app_id, "cli_cirestart");
 assert.equal(restoredConfig.has_secret, true);
 assert.equal(restoredConfig.enabled, false);
 console.log(
